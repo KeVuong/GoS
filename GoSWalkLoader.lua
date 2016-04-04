@@ -8,8 +8,8 @@ end
 if not file_exists(COMMON_PATH.. "GoSWalk.lua") then
   DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/GoSWalk.lua", COMMON_PATH .. "GoSWalk.lua", function() PrintChat("Downloaded GoSWalk, please 2x F6!") return end)
 else
-  require "GoSWalk"
+  --require "GoSWalk"
 end
 -- end Icesythe7
-local Walk = Orbwalking()
-Walk:LoadMenu()
+--local Walk = Orbwalking()
+--Walk:LoadMenu()
