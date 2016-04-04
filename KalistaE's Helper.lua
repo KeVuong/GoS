@@ -1,18 +1,13 @@
 if GetObjectName(GetMyHero()) ~= "Kalista" then return end
 	
-require('GoSWalk')
 
-
-local walk = Orbwalking()
 
 local menu = MenuConfig("Helper","KalistaE's Helper")
-menu:Menu("Orbwalker","Orbwalker")
-walk:LoadMenu(menu.Orbwalker)
 menu:Boolean("Enable", "Lasthit helper", true)
 
 
 -- 
-walk:RegisterOnNonKillableMinion(function(minion) KalistaOnNonKillableMinion(minion) end)
+GoSWalk:RegisterOnNonKillableMinion(function(minion) KalistaOnNonKillableMinion(minion) end)
 
 local eStacks = {}
 OnUpdateBuff(function(unit,buff) 
