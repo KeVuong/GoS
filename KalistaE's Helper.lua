@@ -25,7 +25,7 @@ end)
 
 function KalistaOnNonKillableMinion(minion)
 	if eStacks[minion.networkID] and myHero:CanUseSpell(_E) == READY and menu.Enable:Value() then
-		print("Cast E")
+		--print("Cast E")
 		CastSpell(_E)-- need to calc E dmg 
 	
 	end
