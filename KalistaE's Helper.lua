@@ -7,7 +7,7 @@ menu:Boolean("Enable", "Lasthit helper", true)
 
 
 -- 
-GoSWalk:RegisterOnNonKillableMinion(function(minion) KalistaOnNonKillableMinion(minion) end)
+GoSWalk:RegisterOnNonKillableMinion(KalistaOnNonKillableMinion)
 
 local eStacks = {}
 OnUpdateBuff(function(unit,buff) 
