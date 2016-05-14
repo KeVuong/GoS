@@ -1,6 +1,6 @@
 if myHero.charName ~= "Janna" then return end
 
-local ver = "05112016"
+local ver = "05142016000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -47,10 +47,11 @@ end
 
 function Janna:LoadMenu()
 	self.Menu = Menu( "SB"..myHero.charName, "Janna - The Storm's Fury")
+	
 	self.Menu:SubMenu("Key", "> Key Settings")
 	self.Menu.Key:KeyBinding("Combo","Combo",32)
 	self.Menu.Key:KeyBinding("Harass","Harass",string.byte("C"))
-	--self.Menu.Key:KeyBinding("LaneClear","LaneClear",string.byte("V"))
+	
 	self.Menu:SubMenu("Qset", "> Q Settings")
 	self.Menu.Qset:Boolean("Combo","Use in Combo", true)
 	self.Menu.Qset:Boolean("Harass","Use in Harass", false)
@@ -60,18 +61,30 @@ function Janna:LoadMenu()
 	self.Menu:SubMenu("Wset", "> W Settings")
 	self.Menu.Wset:Boolean("Combo","Use in Combo", true)
 	self.Menu.Wset:Boolean("Harass","Use in Harass", true)
+	
 	self.Menu:SubMenu("Eset", "> E Settings")
 	self.Menu.Eset:Boolean("Combo","Use in Combo", true)
 	self.Menu.Eset:Boolean("Turret","Shield Against Turrets", true)
 	self.Menu.Eset:Boolean("Spell","Shield Ally", true)
+	
 	self.Menu:SubMenu("Rset", "> R Settings")
 	self.Menu.Rset:Boolean("Heal","Heal Ally", true)
 	self.Menu.Rset:Boolean("Interrupt","Interrupt Enemy Spells", true)
 	--self.Menu.Rset:Boolean("AG","Anti-Gapclose", true)
+	
+	self.Menu:SubMenu("Insec", "> Insec Settings")
+	self.Menu.Insec:KeyBinding("Enable","Enable (Toggle)",string.byte("M"),true)
+	self.Menu.Insec:Boolean("Ally","Insec to Ally",true)
+	self.Menu.Insec:Boolean("Turret","Insec to Turret",true)
+	self.Menu.Insec:Boolean("Text","Draw Text",true)
+	self.Menu.Insec:Boolean("Draw","Draw Insec Position",true)
+	
 	self.Menu:SubMenu("AG", "> AntiGapcloser")
 	AddGapcloseEvent(_Q,Spells[_Q].range,false,self.Menu.AG)
 	
 	self.Menu:SubMenu("KS", "> KS Settings")
+	self.Menu.KS:Boolean("W","Use W",true)
+	
 	self.Menu:SubMenu("Draw", "> Draw Settings")
 	self.Menu.Draw:Boolean("Q","Draw Q Range", true)
 	self.Menu.Draw:Boolean("W","Draw W Range", true)
@@ -102,7 +115,7 @@ function Janna:ProcessSpell(unit,spell)
 		end
 	end
 	if unit ~= myHero and unit.team == myHero.team and GetDistance(unit) < Spells[_E].range and spell.name:lower():find("attack") and spell.target and spell.target.type == myHero.type then
-		if self.Menu.Eset.Combo.Value() and Spells[_E].ready then 
+		if self.Menu.Eset.Combo:Value() and Spells[_E].ready then 
 			myHero:CastSpell(_E,spell.target)
 		end
 	end
@@ -123,7 +136,7 @@ function Janna:GetBestTarget(Range, Ignore)
 			end
 		end
 	end
-	if self.SelectedTarget then
+	if ValidTarget(self.SelectedTarget,Range+100) then
 		return self.SelectedTarget
 	end
   
