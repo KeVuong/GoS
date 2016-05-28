@@ -1,6 +1,6 @@
 if myHero.charName ~= "Janna" then return end
 
-local ver = "05142016000"
+local ver = "20170528000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -42,7 +42,7 @@ function Janna:__init()
 	Callback.Add("CreateObj",function(o) self:CreateObj(o) end)
 	Callback.Add("Tick",function() self:Tick() end)
 	Callback.Add("Draw",function() self:Draw() end)
-	Callback.Add("WndMsg",function(Msg, Key) self:WndMsg(Msg, Key) end)
+	
 end
 
 function Janna:LoadMenu()
@@ -121,26 +121,8 @@ function Janna:ProcessSpell(unit,spell)
 	end
 end
 
-function Janna:GetBestTarget(Range, Ignore)
-	local LessToKill = 100
-	local LessToKilli = 0
-	local target = nil
-	for i, enemy in ipairs(GetEnemyHeroes()) do
-		if ValidTarget(enemy, Range) then
-			DamageToHero = myHero:CalcMagicDamage(enemy, 200)
-			ToKill = GetCurrentHP(enemy) / DamageToHero
-			if ((ToKill < LessToKill) or (LessToKilli == 0)) and (Ignore == nil or (GetNetworkID(Ignore) ~= GetNetworkID(enemy))) then
-				LessToKill = ToKill
-				LessToKilli = i
-				target = enemy
-			end
-		end
-	end
-	if ValidTarget(self.SelectedTarget,Range+100) then
-		return self.SelectedTarget
-	end
-  
-	return target
+function Janna:GetBestTarget()
+	return	GetCurrentTarget()
 end
 
 
@@ -221,32 +203,7 @@ function Janna:HealAlly()
 	end
 end
 
-function Janna:WndMsg(msg,key)
 
-	if msg == 513 then
-		local minD = 0
-		local starget = nil
-		for i, enemy in pairs(GetEnemyHeroes()) do
-			if ValidTarget(enemy) then
-				if GetDistance(enemy, GetMousePos()) <= minD or starget == nil then
-					minD = GetDistance(enemy, GetMousePos())
-					starget = enemy
-				end
-			end
-		end
-		
-		if starget and minD < 200 then
-			if self.SelectedTarget and starget.charName == self.SelectedTarget.charName then
-				self.SelectedTarget = nil
-				PrintChat("<font color=\"#FF0000\">Deselected target: "..starget.charName.."</font>")
-			else
-				self.SelectedTarget = starget
-				PrintChat("<font color=\"#ff8c00\">New target selected: "..starget.charName.."</font>")
-			end
-		end
-	
-	end
-end
 
 function Janna:Draw()
 	
