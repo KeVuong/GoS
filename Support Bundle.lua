@@ -6,11 +6,11 @@ if not content:find("--cp") then
 --PrintChat("You are using the outdated version of GoSWalk")
 local function AutoUpdate(data)
     if 2 > 1 then
-        PrintChat("<font color=\"#a020f0\"><b>GoSWalker:</b></font> New version found! " .. data)
-        PrintChat("<font color=\"#a020f0\"><b>GoSWalker:</b></font> Downloading update, please wait...")
-        DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/GoSWalk.lua", COMMON_PATH .. "GoSWalk.lua", function() PrintChat("<font color=\"#a020f0\"><b>GoSWalker:</b></font> Update Completed, please 2x F6!") return end)
+        PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> New version found! " .. data)
+        PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> Downloading update, please wait...")
+        DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/GoSWalk.lua", COMMON_PATH .. "GoSWalk.lua", function() PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> Update Completed, please 2x F6!") return end)
     else
-        PrintChat("<font color=\"#a020f0\"><b>GoSWalker:</b></font> No updates found")
+        PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> No updates found")
     end
 end
 
@@ -32,7 +32,7 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160613000"
+local ver = "20160613001"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -1081,7 +1081,7 @@ class "Nautilus"
 
 
 function Nautilus:__init()
-	Q = {ready = false, range = 1100, radius = 90, speed = 2000, delay = 0.25, type = "line"}
+	Q = {ready = false, range = 1100, radius = 90, speed = 2000, delay = 0.25, type = "line",col = {"champion","minion"}}
 	W = {ready = false, range = 175 }
 	E = {ready = false, range = 550 }
 	R = {ready = false,range = 825}
@@ -1322,7 +1322,10 @@ function Nautilus:Combo()
 		if GetDistance(target) < Q.range + 150 then
 	
 			if Q.ready and GPred then
-				local qPred = GPred:GetPrediction(target,myHero,Q)
+				local qPred = GPred:GetPrediction(target,myHero,Q,false,true)
+				if qPred.hitChance >= 3 and not self:WallCheck(qPred.CastPosition) then
+					myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
+				end
 			elseif Q.ready then
 				local qPred = GetPrediction(target,Q)
 				if qPred.hitChance >= 0.2 and not qPred:mCollision(1) and not self:WallCheck(qPred.castPos) then
