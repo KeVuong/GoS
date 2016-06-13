@@ -89,9 +89,7 @@ function Support:__init()
 
 end
 
-function Support:GetBestTarget()
-	return self
-end
+
 
 function Support:AutoShield()
 	return 
@@ -647,7 +645,7 @@ function Karma:Combo()
 			end
 			if Q.ready and GPred then
 				local qPred = GPred:GetPrediction(target,myHero,Q)
-				if qPred.HitChance >= 1  then
+				if qPred.HitChance >= 3  then
 					local col,obj = self:CollisitionCheck(qPred.CastPosition)
 					if not col then
 						myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
