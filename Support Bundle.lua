@@ -3,7 +3,7 @@ local file = io.open(COMMON_PATH.."\\GoSWalk.lua", "r")
 local content = file:read("*all")
 file:close()
 if not content:find("--cp") then
---PrintChat("You are using the outdated version of GoSWalk")
+
 local function AutoUpdate(data)
     if 2 > 1 then
         PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> New version found! " .. data)
@@ -32,7 +32,7 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160613001"
+local ver = "20160614001"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -80,7 +80,20 @@ require "DamageLib"
 		return c
 	end
 	
-local InterruptSpells = {}  
+local InterruptSpells = {
+	{charName = "Caitlyn", spellName = "CaitlynAceintheHole"},
+	{charName = "Darius", spellName = "DariusExecute"},
+	{charName = "FiddleSticks", spellName = "Crowstorm"},
+	{charName = "FiddleSticks", spellName = "Drain"},
+	{charName = "Galio", spellName = "GalioIdolOfDurand"},
+	{charName = "Xerath", spellName = "XerathArcanoPulseChargeUp"},
+	{charName = "Shen", spellName = "ShenStandUnited"},
+	{charName = "Sion", spellName = "SionQ"},
+	{charName = "Urgot", spellName = "UrgotSwap2"},
+	{charName = "Lucian", spellName = "LucianR"},
+	{charName = "TwistedFate", spellName = "Gate"},
+
+}  
 local Spells = {}
 
 class "Support"
@@ -250,7 +263,7 @@ function Janna:Combo()
 	if qtarget and Spells[_Q].ready and self.Menu.Qset.Combo:Value() then
 		if GPred then
 		local qPred = GPred:GetPrediction(qtarget,myHero,Spells[_Q])
-		if qPred and qPred.HitChance >= 2 then
+		if qPred and qPred.HitChance >= 3 then
 			myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
 		end
 		else
@@ -977,7 +990,7 @@ function Morgana:CastW(unit)
 	if not ValidTarget(unit) then return end
 	if GPred then
 		local qPred = GPred:GetPrediction(unit,myHero,W)
-		if qPred and qPred.HitChance >= 3 then
+		if  qPred.HitChance >= 3 then
 			myHero:CastSpell(_W,qPred.CastPosition.x,qPred.CastPosition.z)
 		end
 		return
@@ -1089,6 +1102,7 @@ function Nautilus:__init()
 	self.lastTick = 0
 	self.SelectedTarget = nil
 	self.RootBuff = nil
+	self:InterruptableSpells = {}
 	self:LoadMenu()
 	Callback.Add("UpdateBuff", function(u,s) self:UpdateBuff(u,s) end)
 	Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
@@ -1457,7 +1471,7 @@ function Nami:__init()
 	self.TargetsSlowed  = {}
 	self:LoadMenu()
 	Callback.Add("UpdateBuff", function(u,s) self:UpdateBuff(u,s) end)
-	Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
+	--Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
 	Callback.Add("ProcessSpell",function(u,s) self:ProcessSpell(u,s) end)
 	--Callback.Add("CreateObj",function(o) self:CreateObj(o) end)
 	Callback.Add("Tick",function() self:Tick() end)
@@ -1575,18 +1589,7 @@ function Nami:UpdateBuff(unit,buff)
         self.TargetsSlowed[unit.networkID] = GetGameTimer() + (buff.ExpireTime - buff.StartTime) - 0.05
         return
     end
-	if true then return end
-	if unit.isMe then
-		--print(buff.Name)
-	end
-	if unit.team ~= myHero.team and buff.Name:lower():find("karma") then
-		--print(buff.Name)
-	end
 
-	if unit.team ~= myHero.team and buff.Name:lower() == "karmaspiritbind" then
-		
-		self.RootBuff = {time = GetGameTimer() + 2, unit = unit }
-	end
 end
 
 function Nami:RemoveBuff(unit,buff)
@@ -1618,7 +1621,7 @@ function Nami:Tick()
 	if self.Menu.Key.Harass:Value() then
 		self:Harass()
 	end
-	if R.ready then
+	if R.ready  then
 		self:AutoR()
 	end
 	if W.ready then
@@ -1646,8 +1649,8 @@ end
 
 function Nami:CastQ(unit)
 	if GPred then
-		local qPred = GPred:GetPrediction(unit,myHero,Q,false,true)
-		if qPred and qPred.HitChance >= 2 then
+		local qPred = GPred:GetPrediction(unit,myHero,Q)
+		if qPred and qPred.HitChance >= 3 then
 			myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
 		end
 		return
@@ -1697,9 +1700,11 @@ function Nami:Harass()
 end
 
 function Nami:AutoR()
-	if self.Menu.Rset.AutoR:Value() then
-		if EnemiesAround(myHero.pos,R.range - 100) >= self.Menu.Rset.Min:Value() then
-			myHero:CastSpell(_R,myHero)
+	local target = self:GetTarget()
+	if ValidTarget(target,1800) and EnemiesAround(target.pos,1000) >= self.Menu.Rset.AutoR:Value() then
+		local rPred = GPred:GetPrediction(target,myHero,R,true)
+		if rPred.HitChance >=3 and rPred.MaxHit >= self.Menu.Rset.AutoR:Value() then
+			myHero:CastSpell(_R,rPred.CastPosition.x,rPred.CastPosition.z)
 		end
 	end
 end
@@ -2539,37 +2544,6 @@ function Volibear:Tick()
 	end
 end
 
-function Volibear:GetShieldTarget()
-	local result = myHero
-	local total = CountAllyNearPos(myHero.pos,660)
-	for i, ally in pairs(GetAllyHeroes()) do
-		if ally and not ally.dead and ally.charName ~= myHero.charName and GetDistance(ally) <= E.range then
-			local count = CountAllyNearPos(ally.pos,660)
-			if count > total then
-				total = count
-				result = ally
-			end
-		end
-	end
-	if total >= self.Menu.Eset.nAlly:Value() then
-		return result
-	else
-		return nil
-	end	
-end
-
-function Volibear:CollisitionCheck(pos)
-	local objects = {}
-	for _,minion in pairs(minionManager.objects) do
-		if minion.team ~= myHero.team and ValidTarget(minion,1200) then
-			local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(myHero.pos, pos, Vector(minion))
-			if GetDistance(pointSegment,minion) < Q.radius + minion.boundingRadius then
-				table.insert(objects,minion)
-			end
-		end
-	end
-	return #objects > 0, objects
-end
 
 function Volibear:Combo()
 	
