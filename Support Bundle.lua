@@ -1102,7 +1102,7 @@ function Nautilus:__init()
 	self.lastTick = 0
 	self.SelectedTarget = nil
 	self.RootBuff = nil
-	self:InterruptableSpells = {}
+	self.InterruptableSpells = {}
 	self:LoadMenu()
 	Callback.Add("UpdateBuff", function(u,s) self:UpdateBuff(u,s) end)
 	Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
