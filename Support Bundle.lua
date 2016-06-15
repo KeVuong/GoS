@@ -32,7 +32,7 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160614001"
+local ver = "20160614003"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
