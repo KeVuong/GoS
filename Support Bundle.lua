@@ -28,11 +28,15 @@ local SupportHeroes = {
 	Zilean = true,
 	Braum = true,
 	Volibear = true,
+	--Thresh = true,
+	--Blitzcrank = true,
+	--Alistar = true,
+	--
 }
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160614003"
+local ver = "20160617003"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -2112,7 +2116,7 @@ function Braum:LoadMenu()
 	self.Menu.Qset:Boolean("AutoQ","Auto Q", true)
 	self.Menu.Qset:Boolean("Combo","Use in Combo", true)
 	self.Menu.Qset:Boolean("Harass","Use in Harass", true)
-	--self.Menu.Qset:Boolean("Immobile","Use on Immobile", true)
+	self.Menu.Qset:Boolean("Immobile","Use on Immobile", true)
 	--self.Menu.Qset:Boolean("JungleClear","Use in JungleClear", true)
 	
 
