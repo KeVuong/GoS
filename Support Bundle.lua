@@ -62,7 +62,7 @@ if GetUser() == "MeoBeo" then
 else
 	require "GPrediction"
 end	
-if not _G.gPred then PrintChat("Downloading required libs, please wait...") end
+if not _G.gPred then PrintChat("Downloading required libs, please wait...") return end
 local GPred = _G.gPred
 
 require "OpenPredict"
