@@ -2,7 +2,7 @@
 local file = io.open(COMMON_PATH.."\\GoSWalk.lua", "r")
 local content = file:read("*all")
 file:close()
-if not content:find("--cp") then
+if not content or not content:find("--cp") then
 
 local function AutoUpdate(data)
     if 2 > 1 then
@@ -31,12 +31,12 @@ local SupportHeroes = {
 	--Thresh = true,
 	--Blitzcrank = true,
 	--Alistar = true,
-	--
+	--Bard
 }
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160617003"
+local ver = "20160618000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -53,8 +53,8 @@ GetWebResultAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/Support.
 
 local GPred = nil
 if  not FileExist(COMMON_PATH.."\\GPrediction.lua") then
-	PrintChat("Downloading required lib, please wait...")
-	DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/Common/GPrediction.lua", COMMON_PATH .. "GPrediction.lua", function() PrintChat("Download Complete, please 2x F6!") return end)
+	PrintChat("Downloading required libs, please wait...")
+	DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/Common/GPrediction.lua", COMMON_PATH .. "GPrediction.lua", function() PrintChat("Download Completed, please 2x F6!") return end)
 	return
 end
 if GetUser() == "MeoBeo" then
@@ -62,7 +62,8 @@ if GetUser() == "MeoBeo" then
 else
 	require "GPrediction"
 end	
-local GPred = GPrediction()
+if not _G.gPred then PrintChat("Downloading required libs, please wait...") end
+local GPred = _G.gPred
 
 require "OpenPredict"
 
