@@ -36,7 +36,7 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160618000"
+local ver = "20160620000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -823,7 +823,7 @@ function Morgana:__init()
 	self.TargetsSlowed  = {}
 	self:LoadMenu()
 	Callback.Add("UpdateBuff", function(u,s) self:UpdateBuff(u,s) end)
-	Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
+	--Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
 	Callback.Add("ProcessSpell",function(u,s) self:ProcessSpell(u,s) end)
 	--Callback.Add("CreateObj",function(o) self:CreateObj(o) end)
 	Callback.Add("Tick",function() self:Tick() end)
@@ -927,29 +927,16 @@ function Morgana:UpdateBuff(unit,buff)
         self.TargetsSlowed[unit.networkID] = GetGameTimer() + (buff.ExpireTime - buff.StartTime)
         return
     end
-	if true then return end
 
-	if unit.team ~= myHero.team and buff.Name:lower() == "karmaspiritbind" then
-		
-		self.RootBuff = {time = GetGameTimer() + 2, unit = unit }
-	end
 end
 
-function Morgana:RemoveBuff(unit,buff)
-	if unit.isMe and buff.Name:lower() == "karmamantra" then
-		self.HasMantra = false
-	end
-	if unit.team ~= myHero.team and buff.Name:lower() == "karmaspiritbind" then
-		self.RootBuff[unit.networkID] = nil
-	end
-end
 
 
 function Morgana:Tick()
 	if os.clock()*1000 < self.lastTick then
 		return 
 	end
-	self.lastTick = os.clock()*1000 + 1
+	self.lastTick = os.clock()*1000 + 2
 	self:Check()
 	if self.SelectedTarget and self.SelectedTarget.dead then 
 		self.SelectedTarget = nil
@@ -980,7 +967,7 @@ function Morgana:CastQ(unit)
 	if not ValidTarget(unit) then return end
 	if GPred then
 		local qPred = GPred:GetPrediction(unit,myHero,Q,false,true)
-		if qPred and qPred.HitChance >= 3 then
+		if  qPred.HitChance >= 3 then
 			myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
 		end
 		return
@@ -1655,7 +1642,7 @@ end
 function Nami:CastQ(unit)
 	if GPred then
 		local qPred = GPred:GetPrediction(unit,myHero,Q)
-		if qPred and qPred.HitChance >= 3 then
+		if  qPred.HitChance >= 3 then
 			myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
 		end
 		return
@@ -1961,7 +1948,7 @@ end
 function Zilean:CastQ(unit)
 	if GPred then
 		local qPred = GPred:GetPrediction(unit,myHero,Q)
-		if qPred and qPred.HitChance >= 2 then
+		if qPred.HitChance >= 3 then
 			myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
 		end
 		return
@@ -2739,6 +2726,14 @@ function Volibear:WndMsg(msg,key)
 
 end
 
+if GetUser() ~= "MeoBeo" then
+	if not FileExist(COMMON_PATH.. "Analytics.lua") then
+		DownloadFileAsync("https://raw.githubusercontent.com/LoggeL/GoS/master/Analytics.lua", COMMON_PATH .. "Analytics.lua", function() end)
+	else
+		require("Analytics")
+		Analytics("SupportBundle","BigFatCat")
+	end
+end
 
 local function CheckEvade()
 	if GetGameTimer() < 120 and _G.GoSEvade == nil then
