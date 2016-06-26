@@ -36,7 +36,7 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160620000"
+local ver = "20160626000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -1763,21 +1763,42 @@ end
 class "Zilean"
 
 function Zilean:__init()
-	Q = {ready = false, range = 900, radius = 200, speed = 2000, delay = 0.3, type = "circular", mana = function() return myHero:GetSpellData(_Q).level > 0 and ({60,65,70,75,80})[myHero:GetSpellData(_Q).level] or 0 end}
-	W = {ready = false, range = 725,radius = 225, speed = 2200, delay = 0.5, type = "circular",mana = 35 }
+	Q = {ready = false, range = 900, radius = 180, speed = 2000, delay = 0.25, type = "circular", mana = function() return myHero:GetSpellData(_Q).level > 0 and ({60,65,70,75,80})[myHero:GetSpellData(_Q).level] or 0 end}
+	W = {ready = false, range = 725,mana = 35 }
 	E = {ready = false, range = 800,mana = 50 }
-	R = {ready = false, range = 900,radius = 260, speed = 850, delay = 0.5, type = "line",mana = function() return myHero:GetSpellData(_R).level > 0 and ({125,150,175})[myHero:GetSpellData(_R).level] or 0 end }
-	self.HasMantra = false
+	R = {ready = false, range = 900, mana = function() return myHero:GetSpellData(_R).level > 0 and ({125,150,175})[myHero:GetSpellData(_R).level] or 0 end }
+	
 	self.lastTick = 0
 	self.SelectedTarget = nil
-	self.RootBuff = nil
+	self.HasBuffSpeed = false
+	self.InitiatorsList  = {
+	["Aatrox"] = {name = "aatroxq", type = "endPos" },
+	["Akali"] = {name = "akalishadowdance", type = "target" },
+	["Amumu"] = {name = "bandagetoss", type = "endPos" },
+	["Ekko"] = {name = "ekkoe", type = "target" },
+	["FiddleSticks"] = {name = "crowstorm", type = "endPos" },
+	["Fiora"] = {name = "fioraq", type = "endPos" },
+	["Gnar"] = {name = "gnare", type = "endPos" },
+	["Gnar"] = {name = "gnarbige", type = "endPos" },
+	["Gragas"] = {name = "gragase", type = "endPos" },
+	["JarvanIV"] = {name = "jarvanivdragonstrike", type = "endPos" },
+	["Jax"] = {name = "jaxleapstrike", type = "endPos" },
+	["Katarina"] = {name = "katarinae", type = "target" },
+	["Kassadin"] = {name = "riftwalk", type = "endPos" },
+	["KhaZix"] = {name = "khazixe", type = "endPos" },
+	["KhaZix"] = {name = "khazixelong", type = "endPos" },
+	["LeeSin"] = {name = "blindmonkqtwo", type = "target" },
+	["Shyvana"] = {name = "shyvanatransformcast", type = "target" },
+	["Leona"] = {name = "leonazenithblademissle", type = "endPos" },
+	["Shyvana"] = {name = "shyvanatransformleap", type = "endPos" },
+	}
 	self.TargetsImmobile = {}
 	self.TargetsSlowed  = {}
 	self:LoadMenu()
 	Callback.Add("UpdateBuff", function(u,s) self:UpdateBuff(u,s) end)
 	Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
 	Callback.Add("ProcessSpell",function(u,s) self:ProcessSpell(u,s) end)
-	--Callback.Add("CreateObj",function(o) self:CreateObj(o) end)
+	
 	Callback.Add("Tick",function() self:Tick() end)
 	Callback.Add("Draw",function() self:Draw() end)
 	--Callback.Add("WndMsg",function(Msg, Key) self:WndMsg(Msg, Key) end)
@@ -1818,13 +1839,7 @@ function Zilean:LoadMenu()
 	self.Menu.Eset:Boolean("Combo","Use in Combo", true)
 	self.Menu.Eset:Boolean("Speed","Buff Speed for Ally", true)
 	self.Menu.Eset:Boolean("Harass","Use in Harass", true)
-	
-	--self.Menu.Eset:Slider("nAlly","Min Allies Around",3,1,5)
-	--self.Menu.Eset:Boolean("JungleClear","Use in JungleClear", true)
-	--self.Menu.Eset:Boolean("Interrupt","Interrupt Enemy Spells", true)
-	--self.Menu.Eset:Boolean("Turret","Shield Against Turrets", true)
-	--self.Menu.Eset:Boolean("Spell","Use Against Spells", true)
-	
+
 	
 	self.Menu:SubMenu("Rset", "> R Settings")
 	
@@ -1869,18 +1884,35 @@ function Zilean:GetTarget()
 end
 
 function Zilean:ProcessSpell(unit,spell)
-	
+	if Q.ready and unit.type == myHero.type and unit.team == myHero.team then
+		local info = self.InitiatorsList[unit.charName]
+		if info and info.name == spell.name:lower() then
+			if info.type == "target" then
+				myHero:CastSpell(_Q,unit.x,unit.z)
+			elseif (spell.target and spell.target.type == myHero.type) or (spell.endPos and EnemiesAround(spell.endPos,300) > 0)  then	
+				myHero:CastSpell(_Q,unit.x,unit.z)
+			end
+		end
+	end
+	if not R.ready then return end
 	if unit and unit.team ~= myHero.team and unit.type == "obj_AI_Turret" and spell.target  and spell.target.type == myHero.type and GetDistance(spell.target) < R.range then
 		if R.ready and spell.target.health < unit.totalDamage  then
 			myHero:CastSpell(_R,spell.target)
 		end
 	end
-	
+	--ignite dmg
+	if unit and unit.team ~= myHero.team and unit.type == myHero.type and spell.target  and spell.name:lower():find("summonerdot") and GetDistance(spell.target) < R.range then
+		if 50+20*GetLevel(unit) - 20 > spell.target.health then
+			myHero:CastSpell(_R,spell.target)
+		end
+	end
 end
 
 function Zilean:UpdateBuff(unit,buff)
 	 if not unit or not buff or unit.type ~= myHero.type then return end
-    
+    if unit.isMe and buff.Name:lower():find("timewarp") then
+		self.HasBuffSpeed = true
+	end
     if (buff.Type == 5 or buff.Type == 11 or buff.Type == 29 or buff.Type == 24) then
         self.TargetsImmobile[unit.networkID] = GetGameTimer() + (buff.ExpireTime - buff.StartTime) - 0.05
         return
@@ -1894,7 +1926,9 @@ function Zilean:UpdateBuff(unit,buff)
 end
 
 function Zilean:RemoveBuff(unit,buff)
-	
+	 if unit.isMe and buff.Name:lower():find("timewarp") then
+		self.HasBuffSpeed = false
+	end
 end
 
 
@@ -1911,6 +1945,9 @@ function Zilean:Tick()
 	--self:
 	if Q.ready  then
 		self:AutoCC()
+	end
+	if E.ready and self.Menu.Eset.Speed:Value() then
+		self:BuffSpeed()
 	end
 	if self.Menu.Key.Combo:Value() then
 		self:Combo()
@@ -1945,6 +1982,23 @@ function Zilean:AutoR()
 	end
 end
 
+function Zilean:BuffSpeed()
+	local target = GetCurrentTarget()
+	if ValidTarget(target,2500) then
+		local distance = GetDistance(target)
+		local eally = nil
+		for i,ally in pairs(GetAllyHeroes()) do
+			if GetDistance(ally) <= E.range and GetDistance(target,ally) < distance then
+				eally = ally
+				distance = GetDistance(target,ally)
+			end
+		end
+		if eally ~= nil and distance < 500 then
+			myHero:CastSpell(_E,eally)
+		end
+	end
+end
+
 function Zilean:CastQ(unit)
 	if GPred then
 		local qPred = GPred:GetPrediction(unit,myHero,Q)
@@ -1966,7 +2020,7 @@ function Zilean:Combo()
 		if Q.ready and GetDistance(target) <= Q.range + target.boundingRadius and self.Menu.Qset.Combo:Value() then
 			self:CastQ(target)
 		end
-		if W.ready and (not Q.ready )and self.Menu.Wset.Combo:Value() and myHero.mana > W.mana + E.mana + Q.mana()*2 + R.mana() then
+		if W.ready and (not Q.ready )  and self.Menu.Wset.Combo:Value() and myHero.mana > W.mana + E.mana + Q.mana()*2 + R.mana() then
 			myHero:CastSpell(_W,myHero)
 		end
 		if E.ready  and self.Menu.Eset.Combo:Value() then
@@ -2001,7 +2055,7 @@ end
 function Zilean:Flee()
 	
 	myHero:Move(GetMousePos().x,GetMousePos().z)
-	if E.ready then
+	if E.ready and not self.HasBuffSpeed then
 		myHero:CastSpell(_E,myHero)
 	end
 	if W.ready and (not Q.ready or not E.ready or not R.ready) then
@@ -2012,13 +2066,21 @@ end
 
 function Zilean:AutoCC()
 	for _,enemy in pairs(GetEnemyHeroes()) do
-		if Q.ready and GetDistance(enemy) <= Q.range and self.TargetsImmobile[enemy.networkID] and self.TargetsImmobile[enemy.networkID] > GetGameTimer() and self.Menu.Qset.Immobile:Value() then
+		if Q.ready and ValidTarget(enemy,Q.range) and self.TargetsImmobile[enemy.networkID] and self.TargetsImmobile[enemy.networkID] > GetGameTimer() + 0.15 and self.Menu.Qset.Immobile:Value() then
 			myHero:CastSpell(_Q,enemy.x,enemy.z)
+			DelayAction(function() if W.ready then CastSpell(_W) end end,0.25)
 		end
-		
+		if Q.ready and ValidTarget(enemy,Q.range) and self.TargetsSlowed[enemy.networkID] and self.TargetsSlowed[enemy.networkID] > GetGameTimer() + 0.15 and self.Menu.Qset.Immobile:Value() then
+			self:CastQ(enemy)
+			DelayAction(function() if W.ready then CastSpell(_W) end end,0.25)
+		end
 	end
-	
-
+	if not E.ready then return end
+	for i,ally in pairs(GetAllyHeroes()) do
+		if E.ready and self.TargetsSlowed[ally.networkID] and self.TargetsSlowed[ally.networkID] >= GetGameTimer() + 0.25 then
+			myHero:CastSpell(_E,ally)
+		end
+	end
 end
 
 function Zilean:Draw()
@@ -2543,8 +2605,11 @@ function Volibear:Combo()
 	if ValidTarget(target) then
 		self:UseItems(target)
 	end
-	if Q.ready and self.Menu.Qset.Combo:Value() and ValidTarget(target) and GetDistance(target) > myHero.range and GetDistance(target) < myHero.range + myHero.boundingRadius + 4*(myHero.ms*(1+(40+5*myHero:GetSpellData(_Q).level)/100) - target.ms) then
+	if Q.ready and self.Menu.Qset.Combo:Value() and ValidTarget(target) and GetDistance(target) > myHero.range + myHero.boundingRadius + 35 and GetDistance(target) < myHero.range + myHero.boundingRadius + 4*(myHero.ms*(1+(40+5*myHero:GetSpellData(_Q).level)/100) - target.ms) then
 		myHero:CastSpell(_Q)
+	end
+	if Q.read and self.Menu.Qset.Combo:Value() and ValidTarget(target,myHero.range + myHero.boundingRadius) and myHero:CalcDamage(target,myHero.totalDamage) *3.5 > target.health then
+		myHero:CastSpell(_Q)--resetAA
 	end
 	if W.ready and self.Menu.Wset.Combo:Value() and ValidTarget(target,W.range) and target.health/target.maxHealth < self.Menu.Wset.HP:Value()/100 then
 		myHero:CastSpell(_W,target)
