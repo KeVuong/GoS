@@ -36,7 +36,7 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160626000"
+local ver = "20160630000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -1886,7 +1886,7 @@ end
 function Zilean:ProcessSpell(unit,spell)
 	if Q.ready and unit.type == myHero.type and unit.team == myHero.team then
 		local info = self.InitiatorsList[unit.charName]
-		if info and info.name == spell.name:lower() then
+		if info and info.name == spell.name:lower() and GetDistance(unit) < Q.range then
 			if info.type == "target" then
 				myHero:CastSpell(_Q,unit.x,unit.z)
 			elseif (spell.target and spell.target.type == myHero.type) or (spell.endPos and EnemiesAround(spell.endPos,300) > 0)  then	
@@ -1975,7 +1975,7 @@ function Zilean:AutoR()
 	end
 	if self.Menu.Rset.Ally:Value() then
 		for i,ally in pairs(GetAllyHeroes()) do
-			if not ally.dead and GetDistance(ally) <= W.range and ally.health/ally.maxHealth < self.Menu.Rset.AllyHp:Value()/100  and EnemiesAround(ally.pos,650) > 0 then
+			if not ally.dead and GetDistance(ally) <= R.range and ally.health/ally.maxHealth < self.Menu.Rset.AllyHp:Value()/100  and EnemiesAround(ally.pos,650) > 0 then
 				myHero:CastSpell(_R,ally)
 			end
 		end
