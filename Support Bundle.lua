@@ -36,7 +36,7 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160630000"
+local ver = "20160701000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -2077,7 +2077,7 @@ function Zilean:AutoCC()
 	end
 	if not E.ready then return end
 	for i,ally in pairs(GetAllyHeroes()) do
-		if E.ready and self.TargetsSlowed[ally.networkID] and self.TargetsSlowed[ally.networkID] >= GetGameTimer() + 0.25 then
+		if E.ready and self.TargetsSlowed[ally.networkID] and self.TargetsSlowed[ally.networkID] >= GetGameTimer() + 0.25 and GetDistance(ally) <= E.range then
 			myHero:CastSpell(_E,ally)
 		end
 	end
