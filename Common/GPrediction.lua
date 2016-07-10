@@ -3,30 +3,40 @@
 gPred:GetPrediction(target,from,spellData,aoe,checkcol)
 
 spellData	.speed
-			.range
-			.delay
-			.radius
-			.type = "line"/"circular"/"cone"
-			.col = {"minion","champion","yasuowall"}
-			.from (range check from, dont use)
+		.range
+		.delay
+		.radius
+		.type = "line"/"circular"/"cone"
+		.col = {"minion","champion","yasuowall"}
+		.from (range check from, dont use)
 			
-aoe			true/false
+aoe(can be nil)		true/false
 
-checkcol 	true/false
+checkcol(can be nil) 	true/false
 
  
 Usage: 
 1. local result = gPred:GetPrediction(target,from,spellData,aoe,checkcol)
 
 	result  	.HitChance
-				.CastPosition
-				.Position
-				.MaxHit (for AOE spells only)
+			.CastPosition
+			.Position
+			.MaxHit (for AOE spells only)
 
 2. local dashinfo = gPred:GetDashInfo(unit)
+	.dashSpeed
+	.startPos
+	.endPos
+	.startT
+	.endT
+	.duration
 
-3. local pos = gPred:GetPosition(unit,delay,waypoint,moveSpeed)
-				
+3. local pos = gPred:GetPosition(unit,delay,waypoint,moveSpeed)--fast prediction
+	delay (second)
+	waypoint (can be nil)
+	moveSpeed (can be nil)
+
+4. local wp = gPred:GetCurrentWaypoints(unit) 
 
 ]]
 
