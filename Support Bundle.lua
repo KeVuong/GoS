@@ -29,14 +29,15 @@ local SupportHeroes = {
 	Braum = true,
 	Volibear = true,
 	--Thresh = true,
-	--Blitzcrank = true,
+	Blitzcrank = true,
 	--Alistar = true,
-	--Bard
+	--Bard,
+	--Lulu = true,
 }
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160701000"
+local ver = "20160813000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -58,16 +59,18 @@ if  not FileExist(COMMON_PATH.."\\GPrediction.lua") then
 	return
 end
 if GetUser() == "MeoBeo" then
-	require "GPrediction_Test"
+
 else
 	require "GPrediction"
+	require "GoSWalk"
 end	
+
 if not _G.gPred then PrintChat("Downloading required libs, please wait...") return end
 local GPred = _G.gPred
 
-require "OpenPredict"
+require "OpenPredict"-- jouzuna 
 
-require "DamageLib"
+require "DamageLib" --Deftsu
 	function CountAllyNearPos(pos, range)
 		if pos == nil or not range then return 0 end
 		local c = 0
@@ -2464,7 +2467,7 @@ function Volibear:__init()
 end
 
 function Volibear:LoadMenu()
-	self.Menu = Menu( "SB"..myHero.charName, "VoliGod")
+	self.Menu = Menu("SB"..myHero.charName, "VoliGod")
 	self.Menu:SubMenu("Key", "> Key Settings")
 	self.Menu.Key:KeyBinding("Combo","Combo",32)
 	self.Menu.Key:KeyBinding("Harass","Harass",string.byte("C"))
@@ -2789,6 +2792,153 @@ function Volibear:WndMsg(msg,key)
 	
 	end
 
+end
+
+class "Blitzcrank"
+
+function Blitzcrank:__init()
+	Q = {ready = false, range = 1000, maxrange = 925, radius = 70 , speed = 1800, delay = 0.25, type = "line", col = {"minion","champion"},mana = 100}
+	W = {ready = false, mana = 75  }
+	E = {ready = false, range = 300,mana = 25 }
+	R = {ready = false, range = 600, radius = 600, speed = math.huge, delay = 0.25, type = "circular",mana = 100}
+	self.rekt = 0
+	self.CanCount = false
+	self.total = 0
+	self.ready = function(x) return myHero:CanUseSpell(x) == READY  end
+	self:LoadMenu()
+	Callback.Add("UpdateBuff", function(u,s) self:UpdateBuff(u,s) end)
+	--Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
+	--Callback.Add("ProcessSpell",function(u,s) self:ProcessSpell(u,s) end)
+	Callback.Add("ProcessSpellComplete",function(u,s) self:ProcessSpell(u,s) end)
+	
+	Callback.Add("Tick",function() self:Tick() end)
+	Callback.Add("Draw",function() self:Draw() end)
+end
+
+function Blitzcrank:Check()
+	Q.ready = myHero:GetSpellData(_Q).level > 0 and myHero:CanUseSpell(_Q) == READY and true or false
+	W.ready = myHero:GetSpellData(_W).level > 0 and myHero:CanUseSpell(_W) == READY and true or false
+	E.ready = myHero:GetSpellData(_E).level > 0 and myHero:CanUseSpell(_E) == READY and true or false
+	R.ready = myHero:GetSpellData(_R).level > 0 and myHero:CanUseSpell(_R) == READY and true or false
+end
+
+function Blitzcrank:LoadMenu()
+	self.Menu = Menu("SB"..myHero.charName, "SupportBundle: Blitzcrank")
+	
+	self.Menu:SubMenu("Gset","> Grab Settings")
+	self.Menu.Gset:Boolean("Dash","AutoGrab Dashing Target",true)
+	self.Menu.Gset:Slider("Min","Min Distance",300,100,Q.range)
+	self.Menu.Gset:Slider("Max","Max Distance",Q.range,100,Q.range)
+	
+	self.Menu:SubMenu("Tset","> Extra Target Settings")
+	for i,enemy in pairs(GetEnemyHeroes()) do
+		self.Menu.Tset:DropDown(enemy.charName,enemy.charName,2,{"Don't Grab","Normal Grab","Auto Grab"})
+	end
+	self.Menu:SubMenu("Draw","> Draw Settings")
+	self.Menu.Draw:Boolean("Q","Draw Q Range",true)
+	self.Menu.Draw:Boolean("Stat","Show My Stats",true)
+	
+	self.Menu:Info("nil","       --[Key Settings]--      ")
+	self.Menu:KeyBinding("Active","Combo ",32)
+	self.Menu:KeyBinding("Grab","Grab Them All !!!",string.byte("C"))
+end
+
+function Blitzcrank:UpdateBuff(unit,buff)
+
+	if unit.isMe and buff.Type == 10 and W.ready then
+		CastSpell(_W)
+	end
+	if unit.team ~= myHero.team and unit.type == myHero.type and buff.Name:lower() == "rocketgrab2" and self.CanCount then
+		self.rekt = self.rekt + 1
+	end	
+	if unit.team ~= myHero.team and unit.type == myHero.type and buff.Name:lower() == "powerfistslow" then
+		DelayAction(function() 
+			if R.ready then CastSpell(_R) end
+		end,0.25)
+		return
+	end
+
+end
+
+function Blitzcrank:ProcessSpell(unit,spell)
+	if unit.isMe and self.CanCount and spell.name == "RocketGrab" then
+		self.total = self.total + 1
+	end
+end
+
+function Blitzcrank:Tick()
+	if myHero.dead then return end
+	self:Check()
+
+	if Q.ready then
+		self:AutoQ()
+	else	
+		if self.CanCount and myHero:GetSpellData(_Q).currentCd < 8 then
+			self.CanCount = false
+		end
+	end
+	if self.Menu.Active:Value() then
+		self:CastQ()
+		self:CastE()
+	end
+	if self.Menu.Grab:Value() then
+		self:CastQ(true)
+	end
+	
+end
+
+function Blitzcrank:AutoQ()
+	for i,enemy in ipairs(GetEnemyHeroes()) do
+		if ValidTarget(enemy,1500) then
+			if self.Menu.Tset[enemy.charName]:Value() == 3 then
+				self:CastQ2(enemy)
+			end
+			self:CastQ2(enemy,4)
+		end
+	end
+end
+
+function Blitzcrank:CastQ(ignore)
+	if not Q.ready then return end
+	local t = heroCache:GetTarget(Q.range,DAMAGE_PHYSIC)
+	if t and (ignore or (GetDistance(t) > self.Menu.Gset.Min:Value() and self.Menu.Tset[t.charName]:Value() > 1)) then
+		self:CastQ2(t)
+	end
+end
+
+function Blitzcrank:CastQ2(target,minHit)
+	
+		local qPred = gPred:GetPrediction(target,myHero,Q,false,true)
+		if (minHit and qPred.HitChance == minHit ) or (not minHit and qPred.HitChance >= 3) then
+			self.CanCount = true
+			CastSkillShot(_Q,qPred.CastPosition)
+		end
+end
+
+function Blitzcrank:CastE()
+	if not E.ready then return end
+	if not GoSWalk:CanMove(40) then return end
+	local cane = false
+	for i,enemy in ipairs(GetEnemyHeroes())do
+		if ValidTarget(enemy,E.range) then
+			cane = true
+			break
+		end
+	end
+	if cane then CastSpell(_E) end
+end
+
+
+function Blitzcrank:Draw()
+	if self.Menu.Draw.Stat:Value() then
+		DrawText("Grab Stats: "..self.rekt.."/"..self.total,20,WINDOW_W/2,30,GoS.White)
+		
+	end
+	if self.Menu.Draw.Q:Value() then
+		local qcolor = Q.ready and  ARGB(222,30,144,255) or ARGB(222,255,0,0)
+		DrawCircle3D(myHero.x,myHero.y,myHero.z,Q.range,1,qcolor,20)
+	end
+	
 end
 
 if GetUser() ~= "MeoBeo" then
