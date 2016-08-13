@@ -37,7 +37,7 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160813000"
+local ver = "20160813001"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -2852,9 +2852,9 @@ function Blitzcrank:UpdateBuff(unit,buff)
 		self.rekt = self.rekt + 1
 	end	
 	if unit.team ~= myHero.team and unit.type == myHero.type and buff.Name:lower() == "powerfistslow" then
-		DelayAction(function() 
+	--	DelayAction(function() 
 			if R.ready then CastSpell(_R) end
-		end,0.25)
+	--	end,0.25)
 		return
 	end
 
