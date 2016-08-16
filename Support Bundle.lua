@@ -1,3 +1,38 @@
+local SupportHeroes = {
+	Janna = true,
+	Karma = true,
+	Morgana = true,
+	Nautilus = true,
+	Nami = true,
+	Zilean = true,
+	Braum = true,
+	Volibear = true,
+	--Thresh = true,
+	Blitzcrank = true,
+	--Alistar = true,
+	--Bard,
+	--Lulu = true,
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --GoSWalk
 local file = io.open(COMMON_PATH.."\\GoSWalk.lua", "r")
 local content = file:read("*all")
@@ -19,21 +54,6 @@ end
 
 BlockF7OrbWalk(true)
 BlockF7Dodge(true)
-local SupportHeroes = {
-	Janna = true,
-	Karma = true,
-	Morgana = true,
-	Nautilus = true,
-	Nami = true,
-	Zilean = true,
-	Braum = true,
-	Volibear = true,
-	--Thresh = true,
-	Blitzcrank = true,
-	--Alistar = true,
-	--Bard,
-	--Lulu = true,
-}
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
