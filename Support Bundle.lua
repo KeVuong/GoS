@@ -21,18 +21,6 @@ local SupportHeroes = {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 --GoSWalk
 local file = io.open(COMMON_PATH.."\\GoSWalk.lua", "r")
 local content = file:read("*all")
@@ -55,9 +43,10 @@ end
 BlockF7OrbWalk(true)
 BlockF7Dodge(true)
 
+
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160813001"
+local ver = "20160817000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -79,7 +68,7 @@ if  not FileExist(COMMON_PATH.."\\GPrediction.lua") then
 	return
 end
 if GetUser() == "MeoBeo" then
-
+	require "GPredictionSource"
 else
 	require "GPrediction"
 	require "GoSWalk"
@@ -2817,7 +2806,7 @@ end
 class "Blitzcrank"
 
 function Blitzcrank:__init()
-	Q = {ready = false, range = 1000, maxrange = 925, radius = 70 , speed = 1800, delay = 0.25, type = "line", col = {"minion","champion"},mana = 100}
+	Q = {ready = false, range = 925, attemptT = 0, radius = 70 , speed = 1800, delay = 0.25, type = "line", col = {"minion","champion"},mana = 100}
 	W = {ready = false, mana = 75  }
 	E = {ready = false, range = 300,mana = 25 }
 	R = {ready = false, range = 600, radius = 600, speed = math.huge, delay = 0.25, type = "circular",mana = 100}
@@ -2825,6 +2814,7 @@ function Blitzcrank:__init()
 	self.CanCount = false
 	self.total = 0
 	self.ready = function(x) return myHero:CanUseSpell(x) == READY  end
+	self.pos = nil
 	self:LoadMenu()
 	Callback.Add("UpdateBuff", function(u,s) self:UpdateBuff(u,s) end)
 	--Callback.Add("RemoveBuff", function(u,s) self:RemoveBuff(u,s) end)
@@ -2833,6 +2823,7 @@ function Blitzcrank:__init()
 	
 	Callback.Add("Tick",function() self:Tick() end)
 	Callback.Add("Draw",function() self:Draw() end)
+	
 end
 
 function Blitzcrank:Check()
@@ -2854,9 +2845,14 @@ function Blitzcrank:LoadMenu()
 	for i,enemy in pairs(GetEnemyHeroes()) do
 		self.Menu.Tset:DropDown(enemy.charName,enemy.charName,2,{"Don't Grab","Normal Grab","Auto Grab"})
 	end
+	self.Menu:SubMenu("Rset","> Auto R Settings")
+	self.Menu.Rset:Boolean("KS","KillSteal",true)
+	self.Menu.Rset:Slider("Min","x enemies around",2,1,5,1)
+	
 	self.Menu:SubMenu("Draw","> Draw Settings")
 	self.Menu.Draw:Boolean("Q","Draw Q Range",true)
 	self.Menu.Draw:Boolean("Stat","Show My Stats",true)
+	self.Menu.Draw:Boolean("Pos","Draw Predicted Pos",false)
 	
 	self.Menu:Info("nil","       --[Key Settings]--      ")
 	self.Menu:KeyBinding("Active","Combo ",32)
@@ -2872,9 +2868,9 @@ function Blitzcrank:UpdateBuff(unit,buff)
 		self.rekt = self.rekt + 1
 	end	
 	if unit.team ~= myHero.team and unit.type == myHero.type and buff.Name:lower() == "powerfistslow" then
-	--	DelayAction(function() 
+		DelayAction(function() 
 			if R.ready then CastSpell(_R) end
-	--	end,0.25)
+		end,0.25)
 		return
 	end
 
@@ -2889,7 +2885,9 @@ end
 function Blitzcrank:Tick()
 	if myHero.dead then return end
 	self:Check()
-
+	if R.ready then
+		self:AutoR()
+	end
 	if Q.ready then
 		self:AutoQ()
 	else	
@@ -2929,6 +2927,7 @@ end
 function Blitzcrank:CastQ2(target,minHit)
 	
 		local qPred = gPred:GetPrediction(target,myHero,Q,false,true)
+		self.pos = qPred.CastPosition
 		if (minHit and qPred.HitChance == minHit ) or (not minHit and qPred.HitChance >= 3) then
 			self.CanCount = true
 			CastSkillShot(_Q,qPred.CastPosition)
@@ -2948,6 +2947,17 @@ function Blitzcrank:CastE()
 	if cane then CastSpell(_E) end
 end
 
+function Blitzcrank:AutoR()
+	--ks
+	for i,enemy in ipairs(GetEnemyHeroes()) do
+		if ValidTarget(enemy,590) and getdmg("R",enemy,myHero) > enemy.health and self.Menu.Rset.KS:Value() and  and AlliesAround(enemy.pos,500) < 1 then
+			CastSpell(_R)		
+		end
+	end
+	if EnemiesAround(myHero.pos,600) >= self.Menu.Rset.Min:Value() then
+		CastSpell(_R)		
+	end	
+end
 
 function Blitzcrank:Draw()
 	if self.Menu.Draw.Stat:Value() then
@@ -2958,7 +2968,9 @@ function Blitzcrank:Draw()
 		local qcolor = Q.ready and  ARGB(222,30,144,255) or ARGB(222,255,0,0)
 		DrawCircle3D(myHero.x,myHero.y,myHero.z,Q.range,1,qcolor,20)
 	end
-	
+	if self.Menu.Draw.Pos:Value() and self.pos then
+		DrawCircle3D(self.pos.x,self.pos.y,self.pos.z,65,2,ARGB(222,20,90,255),20)
+	end
 end
 
 if GetUser() ~= "MeoBeo" then
