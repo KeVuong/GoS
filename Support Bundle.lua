@@ -46,7 +46,7 @@ BlockF7Dodge(true)
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160817000"
+local ver = "20160817001"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -2950,7 +2950,7 @@ end
 function Blitzcrank:AutoR()
 	--ks
 	for i,enemy in ipairs(GetEnemyHeroes()) do
-		if ValidTarget(enemy,590) and getdmg("R",enemy,myHero) > enemy.health and self.Menu.Rset.KS:Value() and  and AlliesAround(enemy.pos,500) < 1 then
+		if ValidTarget(enemy,590) and getdmg("R",enemy,myHero) > enemy.health and self.Menu.Rset.KS:Value() and AlliesAround(enemy.pos,500) < 1 then
 			CastSpell(_R)		
 		end
 	end
