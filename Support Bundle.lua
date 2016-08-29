@@ -46,7 +46,7 @@ BlockF7Dodge(true)
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160817001"
+local ver = "20160830000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -61,7 +61,7 @@ end
 GetWebResultAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/Support.version", AutoUpdate)
 
 
-local GPred = nil
+
 if  not FileExist(COMMON_PATH.."\\GPrediction.lua") then
 	PrintChat("Downloading required libs, please wait...")
 	DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/Common/GPrediction.lua", COMMON_PATH .. "GPrediction.lua", function() PrintChat("Download Completed, please 2x F6!") return end)
@@ -80,6 +80,7 @@ local GPred = _G.gPred
 require "OpenPredict"-- jouzuna 
 
 require "DamageLib" --Deftsu
+
 	function CountAllyNearPos(pos, range)
 		if pos == nil or not range then return 0 end
 		local c = 0
@@ -113,35 +114,6 @@ local InterruptSpells = {
 }  
 local Spells = {}
 
-class "Support"
-
-function Support:__init()
-
-end
-
-
-
-function Support:AutoShield()
-	return 
-end
-
-function Support:CountAllyNearPos(pos, range)
-	if pos == nil or not range then return 0 end
-		local c = 0
-		if not myHero.dead then
-			if GetDistance(pos) <= range then
-				c = c+ 1
-			end
-		end
-		
-	for k,v in pairs(GetAllyHeroes()) do 
-		if v and not v.dead and GetDistanceSqr(pos,v) <= range*range then
-			c = c + 1
-		end
-	end
-	return c
-
-end
 class "Janna"
 
 function Janna:__init()
@@ -280,7 +252,7 @@ function Janna:Combo()
 	if qtarget and Spells[_Q].ready and self.Menu.Qset.Combo:Value() then
 		if GPred then
 		local qPred = GPred:GetPrediction(qtarget,myHero,Spells[_Q])
-		if qPred and qPred.HitChance >= 3 then
+		if qPred.HitChance >= 3 then
 			myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
 		end
 		else
@@ -1341,7 +1313,7 @@ function Nautilus:Combo()
 	
 			if Q.ready and GPred then
 				local qPred = GPred:GetPrediction(target,myHero,Q,false,true)
-				if qPred.hitChance >= 3 and not self:WallCheck(qPred.CastPosition) then
+				if qPred.HitChance >= 3 and not self:WallCheck(qPred.CastPosition) then
 					myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
 				end
 			elseif Q.ready then
@@ -2356,7 +2328,7 @@ function Braum:CastQ(unit)
 	if not ValidTarget(unit,Q.range + 100) then return end
 	if GPred then
 		local qPred = GPred:GetPrediction(unit,myHero,Q,false,true)
-		if qPred and qPred.HitChance >= 3 then
+		if qPred.HitChance >= 3 then
 			myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
 		end
 		return
