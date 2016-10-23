@@ -1,5 +1,5 @@
 --[[
-Syndra|Viktor|TwistedFate|Orianna
+Syndra|Viktor|TwistedFate|Orianna |Jayce
 
 
 ]]
