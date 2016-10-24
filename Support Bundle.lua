@@ -46,7 +46,7 @@ BlockF7Dodge(true)
 
 if not SupportHeroes[myHero.charName] then return end
 if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20160830000"
+local ver = "20161025000"
 
 function AutoUpdate(data)
     if tonumber(data) > tonumber(ver) then
@@ -150,9 +150,11 @@ function Janna:LoadMenu()
 	self.Menu:SubMenu("Eset", "> E Settings")
 	self.Menu.Eset:Boolean("Combo","Use in Combo", true)
 	self.Menu.Eset:Boolean("Turret","Shield Against Turrets", true)
+	self.Menu.Eset:Boolean("Me","Shield Me", true)
 	self.Menu.Eset:Boolean("Spell","Shield Ally", true)
 	self.Menu:SubMenu("Rset", "> R Settings")
 	self.Menu.Rset:Slider("Heal","Heal Ally if %HP < ", 15,1,100)
+	self.Menu.Rset:Slider("HealMe","Heal Me if %HP < ", 10,1,100)
 	self.Menu.Rset:Boolean("Interrupt","Interrupt Enemy Spells", true)
 	--self.Menu.Rset:Boolean("AG","Anti-Gapclose", true)
 	self.Menu:SubMenu("Insec", "> Insec Settings")
@@ -325,6 +327,11 @@ function Janna:Tick()
 			end
 		end
 	end
+	if Spells[_E].ready and self.Menu.Eset.Me:Value() and _G.GoSEvade ~= nil then
+		if  not myHero.dead and _G.GoSEvade:IsInSkillShots(myHero,myHero.pos,0,2) then
+				myHero:CastSpell(_E,myHero)
+		end
+	end
 end
 
 function Janna:KillSteal()
@@ -342,7 +349,7 @@ function Janna:HealAlly()
 			myHero:CastSpell(_R)
 		end
 	end
-	if GetPercentHP(myHero) <= self.Menu.Rset.Heal:Value() and EnemiesAround(myHero.pos,300) >= 1 then
+	if GetPercentHP(myHero) <= self.Menu.Rset.HealMe:Value() and EnemiesAround(myHero.pos,300) >= 1 then
 		myHero:CastSpell(_R)
 	end
 end
