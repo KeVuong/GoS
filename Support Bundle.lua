@@ -1,3 +1,13 @@
+--[[
+
+   _   _   _   _   _   _   _     _   _   _   _   _   _  
+  / \ / \ / \ / \ / \ / \ / \   / \ / \ / \ / \ / \ / \ 
+ ( S | u | p | p | o | r | t ) ( B | u | n | d | l | e )
+  \_/ \_/ \_/ \_/ \_/ \_/ \_/   \_/ \_/ \_/ \_/ \_/ \_/ 
+
+]]
+
+
 local SupportHeroes = {
 	Janna = true,
 	Karma = true,
@@ -10,76 +20,22 @@ local SupportHeroes = {
 	--Thresh = true,
 	Blitzcrank = true,
 	--Alistar = true,
-	--Bard,
+	--Bard = true,
 	--Lulu = true,
+	--Zyra = true,
+	--Leona = true,
+	--Malzahar = true,
 }
 
 
-
-
-
-
-
-
---GoSWalk
-local file = io.open(COMMON_PATH.."\\GoSWalk.lua", "r")
-local content = file:read("*all")
-file:close()
-if not content or not content:find("--cp") then
-
-local function AutoUpdate(data)
-    if 2 > 1 then
-        PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> New version found! " .. data)
-        PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> Downloading update, please wait...")
-        DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/GoSWalk.lua", COMMON_PATH .. "GoSWalk.lua", function() PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> Update Completed, please 2x F6!") return end)
-    else
-        PrintChat("<font color=\"#a020f0\"><b>GoSWalk:</b></font> No updates found")
-    end
-end
-
-GetWebResultAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/GoSWalk.version", AutoUpdate)
-end
-
-BlockF7OrbWalk(true)
-BlockF7Dodge(true)
-
-
 if not SupportHeroes[myHero.charName] then return end
-if myHero.charName == "Nautilus" then require "MapPositionGOS" end
-local ver = "20161025000"
 
-function AutoUpdate(data)
-    if tonumber(data) > tonumber(ver) then
-        PrintChat("New version found! " .. data)
-        PrintChat("Downloading update, please wait...")
-        DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/Support Bundle.lua", SCRIPT_PATH .. "Support Bundle.lua", function() PrintChat("Update Complete, please 2x F6!") return end)
-    else
-        PrintChat("No updates found. Support Bundle  v." .. ver .. " Loaded!")
-    end
-end
-
-GetWebResultAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/Support.version", AutoUpdate)
+local ver = "20170112000"
 
 
-
-if  not FileExist(COMMON_PATH.."\\GPrediction.lua") then
-	PrintChat("Downloading required libs, please wait...")
-	DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/Common/GPrediction.lua", COMMON_PATH .. "GPrediction.lua", function() PrintChat("Download Completed, please 2x F6!") return end)
-	return
-end
-if GetUser() == "MeoBeo" then
-	require "GPredictionSource"
-else
-	require "GPrediction"
-	require "GoSWalk"
-end	
-
-if not _G.gPred then PrintChat("Downloading required libs, please wait...") return end
-local GPred = _G.gPred
-
+require "GoSWalk"
 require "OpenPredict"-- jouzuna 
 
-require "DamageLib" --Deftsu
 
 	function CountAllyNearPos(pos, range)
 		if pos == nil or not range then return 0 end
@@ -98,20 +54,6 @@ require "DamageLib" --Deftsu
 		return c
 	end
 	
-local InterruptSpells = {
-	{charName = "Caitlyn", spellName = "CaitlynAceintheHole"},
-	{charName = "Darius", spellName = "DariusExecute"},
-	{charName = "FiddleSticks", spellName = "Crowstorm"},
-	{charName = "FiddleSticks", spellName = "Drain"},
-	{charName = "Galio", spellName = "GalioIdolOfDurand"},
-	{charName = "Xerath", spellName = "XerathArcanoPulseChargeUp"},
-	{charName = "Shen", spellName = "ShenStandUnited"},
-	{charName = "Sion", spellName = "SionQ"},
-	{charName = "Urgot", spellName = "UrgotSwap2"},
-	{charName = "Lucian", spellName = "LucianR"},
-	{charName = "TwistedFate", spellName = "Gate"},
-
-}  
 local Spells = {}
 
 class "Janna"
@@ -2974,3 +2916,7 @@ Callback.Add("Load",CheckEvade)
 DelayAction(function()
 _G[myHero.charName]()
 end,0.5)
+
+if AutoUpdateScript then
+AutoUpdateScript("Support Bundle",ver,"raw.githubusercontent.com","/KeVuong/GoS/master/Support.version","/KeVuong/GoS/master/Support Bundle.lua", SCRIPT_PATH.."Support Bundle.lua")
+end
