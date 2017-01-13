@@ -148,7 +148,7 @@ function isQ2()
 end
 
 function isReady(slot)
-	return myHero:GetSpellData(_Q).currentCd < 0.099
+	return myHero:GetSpellData(slot).currentCd < 0.099
 end
 
 function isValidTarget(obj,range)
