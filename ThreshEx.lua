@@ -17,7 +17,7 @@ ThreshMenu.Key:MenuElement({id = "PushKey", name = "Push Key",key = string.byte(
 --[[Combo]]
 ThreshMenu:MenuElement({type = MENU, id = "Combo", name = "Combo Settings"})
 ThreshMenu.Combo:MenuElement({id = "UseQ", name = "Use Q1", value = true})
---ThreshMenu.Combo:MenuElement({id = "UseE", name = "Use E", value = true})
+ThreshMenu.Combo:MenuElement({id = "UseQ2", name = "Use Q2", value = true})
 
 ThreshMenu:MenuElement({type = MENU, id = "Ultimate", name = "Auto Ult Settings"})
 ThreshMenu.Ultimate:MenuElement({id = "Min", name = "Min enemies around", value = 3,min = 1, max = 5, step = 1})
@@ -57,24 +57,28 @@ end
 -- Main
 
 Callback.Add('Tick',function() 
-
+	
 	if ThreshMenu.Key.ComboKey:Value()	then
-		if isReady(_Q) and isQ1() then
-			local target = GetUglyTarget(Q.range - 90)
-			if target and target:GetCollision(Q.radius,Q.speed,Q.delay) == 0 and (not isReady(_E) or target.distance > 400) then
-				local pos = target:GetPrediction(Q.speed,Q.delay)
-				local v1 = Vector(pos) - Vector(myHero.pos)
-				local v2 = Vector(target.pos) - Vector(myHero.pos)
-				if v1:Angle(v2) < 90 then
-					Control.CastSpell("Q",pos)
-				end	
-			end
+		if isReady(_Q) and isQ2() and Game.Timer() - myHero:GetSpellData(_Q).castTime > 0.56 then
+			Control.CastSpell("Q")
 		end
 		local etarget = GetUglyTarget(E.range)
 		
 		if etarget then
 			CastEPull(etarget)
 		end
+		if isReady(_Q) and isQ1() then
+			local target = GetUglyTarget(Q.range - 90)
+			if target and target:GetCollision(Q.radius,Q.speed,Q.delay) == 0 and (not isReady(_E) or target.distance > 400) then
+				local pos = target:GetPrediction(Q.speed,Q.delay)
+				--local v1 = (Vector(pos) - Vector(myHero.pos)):Normalized()
+				--local v2 = (Vector(target.pos) - Vector(myHero.pos)):Normalized()
+				if true or true then
+					Control.CastSpell("Q",pos)
+				end	
+			end
+		end
+	
 	end
 	if ThreshMenu.Key.PushKey:Value()	then
 		local etarget = GetUglyTarget(E.range)
