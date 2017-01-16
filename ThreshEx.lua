@@ -59,7 +59,7 @@ end
 Callback.Add('Tick',function() 
 	
 	if ThreshMenu.Key.ComboKey:Value()	then
-		if isReady(_Q) and isQ2() and Game.Timer() - myHero:GetSpellData(_Q).castTime > 0.56 then
+		if isReady(_Q) and isQ2() and Game.Timer() - myHero:GetSpellData(_Q).castTime > 0.5 then
 			Control.CastSpell("Q")
 		end
 		local etarget = GetUglyTarget(E.range)
@@ -74,6 +74,7 @@ Callback.Add('Tick',function()
 				--local v1 = (Vector(pos) - Vector(myHero.pos)):Normalized()
 				--local v2 = (Vector(target.pos) - Vector(myHero.pos)):Normalized()
 				if true or true then
+					LastPos = pos	
 					Control.CastSpell("Q",pos)
 				end	
 			end
@@ -134,6 +135,9 @@ end
 function OnDraw()
 	if myHero.dead then return end
 	Draw.Circle(myHero.pos,Q.range,1,Draw.Color(255, 228, 196, 255))
+	if LastPos then 
+		Draw.Circle(LastPos,100,1,Draw.Color(255, 228, 196, 255))
+	end
 end
 
 
@@ -148,7 +152,7 @@ function isQ2()
 end
 
 function isReady(slot)
-	return myHero:GetSpellData(slot).currentCd < 0.099
+	return myHero:GetSpellData(slot).currentCd < 0.099 and (myHero.mana >= myHero:GetSpellData(slot).mana) 
 end
 
 function isValidTarget(obj,range)
