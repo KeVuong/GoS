@@ -4,9 +4,9 @@ require "DamageLib"
 -- Spell Data
 local Q = {delay = 0.5,radius = 80,range = 1050,speed = 1900}
 local W = {delay = 0.25,radius = 80,range = 950,speed = 1900}
-local E = {delay = 0.250,radius = 200,range = 450,speed = 2000}
+local E = {delay = 0.250,radius = 80,range = 460,speed = 2000}
 local R = {delay = 0.35,radius = 80,range = 400,speed = 1900}
-
+local lastq = 0
 -- Menu
 local ThreshMenu = MenuElement({type = MENU, id = "ThreshMenu", name = "Thresh (Alpha)", leftIcon = "http://puu.sh/tkApW/5b630c1ecc.png"})
 --[[Key]]
@@ -18,30 +18,47 @@ ThreshMenu.Key:MenuElement({id = "PushKey", name = "Push Key",key = string.byte(
 ThreshMenu:MenuElement({type = MENU, id = "Combo", name = "Combo Settings"})
 ThreshMenu.Combo:MenuElement({id = "UseQ", name = "Use Q1", value = true})
 ThreshMenu.Combo:MenuElement({id = "UseQ2", name = "Use Q2", value = true})
+ThreshMenu.Combo:MenuElement({id = "DelayQ", name = "Delay Q1 and Q2 (s)", value = 0.5,min = 0.1,max = 0.9,step = 0.01})
+ThreshMenu.Combo:MenuElement({id = "MinQ", name = "Min Distance to Q", value = 150,min = 0,max = 1050,step = 1})
+
 
 ThreshMenu:MenuElement({type = MENU, id = "Ultimate", name = "Auto Ult Settings"})
-ThreshMenu.Ultimate:MenuElement({id = "Min", name = "Min enemies around", value = 3,min = 1, max = 5, step = 1})
+ThreshMenu.Ultimate:MenuElement({id = "Min", name = "Min enemies around", value = 2,min = 1, max = 5, step = 1})
 
 ThreshMenu:MenuElement({type = MENU, id = "AutoLantern", name = "AutoLantern Settings"})
-ThreshMenu.AutoLantern:MenuElement({id = "MinHealth", name = "Min Ally Health %", value = 20,min = 0, max = 100, step = 5})
+ThreshMenu.AutoLantern:MenuElement({id = "savehp", name = "Save Allies When HP below ", value = 20,min = 0, max = 100, step = 5})
+ThreshMenu.AutoLantern:MenuElement({id = "shieldhp", name = "Shield Allies on CC", value = 60 ,min = 0, max = 100, step = 5})
 
-
-
+ThreshMenu:MenuElement({type = MENU, id = "Drawing", name = "Drawing Settings"})
+ThreshMenu.Drawing:MenuElement({id = "QRange", name = "Q Range", value = true})
+ThreshMenu.Drawing:MenuElement({id = "ERange", name = "E Range", value = true})
 
 function GetUglyTarget(range)
 	local result = nil
-	local N = 0
+	local N = math.huge
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
-		if isValidTarget(hero,range) and hero.team ~= myHero.team then
-			local dmgtohero = getdmg("AA",hero,myHero)
+		if isValidTarget(hero,range) and hero.isEnemy then
+			local dmgtohero = getdmg("AA",hero,myHero) or 1
 			local tokill = hero.health/dmgtohero
-			if tokill > N or result == nil then
+			if tokill < N or result == nil then
+				N = tokill
 				result = hero
 			end
 		end
 	end
 	return result
+end
+
+function UltHit(pos,range)
+	local N = 0
+	for i = 1,Game.HeroCount()  do
+		local hero = Game.Hero(i)	
+		if isValidTarget(hero,range + hero.boundingRadius) and hero.isEnemy and hero.distance > 150 then
+			N = N + 1
+		end
+	end
+	return N	
 end
 
 function CountEnemy(pos,range)
@@ -54,28 +71,28 @@ function CountEnemy(pos,range)
 	end
 	return N	
 end
+
 -- Main
 
-Callback.Add('Tick',function() 
-	
+function OnTick() 
 	if ThreshMenu.Key.ComboKey:Value()	then
-		if isReady(_Q) and isQ2() and Game.Timer() - myHero:GetSpellData(_Q).castTime > 0.5 then
+		if isReady(_Q) and isQ2() and ThreshMenu.Combo.UseQ2:Value() and Game.Timer() - myHero:GetSpellData(_Q).castTime > ThreshMenu.Combo.DelayQ:Value() then
 			Control.CastSpell("Q")
 		end
-		local etarget = GetUglyTarget(E.range)
-		
-		if etarget then
-			CastEPull(etarget)
-		end
-		if isReady(_Q) and isQ1() then
-			local target = GetUglyTarget(Q.range - 90)
-			if target and target:GetCollision(Q.radius,Q.speed,Q.delay) == 0 and (not isReady(_E) or target.distance > 400) then
-				local pos = target:GetPrediction(Q.speed,Q.delay)
-				--local v1 = (Vector(pos) - Vector(myHero.pos)):Normalized()
-				--local v2 = (Vector(target.pos) - Vector(myHero.pos)):Normalized()
-				if true or true then
+		if isReady(_Q) and isQ1() and ThreshMenu.Combo.UseQ:Value() then
+			local target = GetUglyTarget(Q.range)
+			if target and target:GetCollision(Q.radius,Q.speed,Q.delay) == 0 and target.distance >= ThreshMenu.Combo.MinQ:Value() then
+				local pos 
+				if IsImmobileTarget(target) or target.attackData.state == 2 then
+					pos = Vector(target.pos)
+				else
+					pos = target:GetPrediction(Q.speed,Q.delay)
+				end
+				if Vector(pos):DistanceTo() < Q.range then
 					LastPos = pos	
+					lastq = os.clock()
 					Control.CastSpell("Q",pos)
+					
 				end	
 			end
 		end
@@ -94,29 +111,23 @@ Callback.Add('Tick',function()
 			CastEPull(etarget)
 		end
 	end
-	if isReady(_R) and CountEnemy(myHero.pos,R.range) >= ThreshMenu.Ultimate.Min:Value() then
+	if isReady(_R) and UltHit(myHero.pos,R.range) >= ThreshMenu.Ultimate.Min:Value() then
 		Control.CastSpell("R")
 	end
 	if isReady(_W) then
 		for i = 1,Game.HeroCount()  do
 			local hero = Game.Hero(i)	
-			if isValidTarget(hero,W.range) and hero.team == myHero.team then
-				if hero.health/hero.maxHealth <= ThreshMenu.AutoLantern.MinHealth:Value()/100 and CountEnemy(hero.pos,500) > 0 then
+			if isValidTarget(hero,W.range) and hero.isAlly then
+				if hero.health/hero.maxHealth <= ThreshMenu.AutoLantern.shieldhp:Value()/100 and IsImmobileTarget(hero) then
+					Control.CastSpell("W",hero.pos)--hero:GetPrediction(W.speed,W.delay)
+				end
+				if hero.health/hero.maxHealth <= ThreshMenu.AutoLantern.savehp:Value()/100 and CountEnemy(hero.pos,500) > 0 then
 					Control.CastSpell("W",hero.pos)
 				end
 			end
 		end	
 	end
-end)
-
-function CastQ(target)
-	
 end
-
-function CastQ2(target)
-
-end
-
 
 function CastEPush(target)
 	if not isReady(_E) then return end
@@ -134,9 +145,14 @@ end
 
 function OnDraw()
 	if myHero.dead then return end
-	Draw.Circle(myHero.pos,Q.range,1,Draw.Color(255, 228, 196, 255))
+	if ThreshMenu.Drawing.QRange:Value() then
+		Draw.Circle(myHero.pos,Q.range,1,Draw.Color(255, 228, 196, 255))
+	end	
+	if ThreshMenu.Drawing.ERange:Value() then
+		Draw.Circle(myHero.pos,E.range,1,Draw.Color(255, 228, 196, 255))
+	end	
 	if LastPos then 
-		Draw.Circle(LastPos,100,1,Draw.Color(255, 228, 196, 255))
+		Draw.Circle(LastPos,100,2,Draw.Color(255, 228, 196, 255))
 	end
 end
 
@@ -152,9 +168,21 @@ function isQ2()
 end
 
 function isReady(slot)
-	return myHero:GetSpellData(slot).currentCd < 0.099 and (myHero.mana >= myHero:GetSpellData(slot).mana) 
+	return myHero:GetSpellData(slot).level > 0 and myHero:GetSpellData(slot).currentCd == 0 and (myHero.mana >= myHero:GetSpellData(slot).mana)
 end
 
 function isValidTarget(obj,range)
+	range = range or math.huge
 	return obj ~= nil and obj.valid and obj.visible and not obj.dead and obj.isTargetable and obj.distance <= range
+end
+
+function IsImmobileTarget(unit)
+	assert(unit, "IsImmobileTarget: invalid argument: unit expected got "..type(unit))
+	for i = 0, unit.buffCount do
+		local buff = unit:GetBuff(i)
+		if buff and (buff.type == 5 or buff.type == 11 or buff.type == 29 or buff.type == 24 ) and buff.count > 0 then
+			return true
+		end
+	end
+	return false	
 end
