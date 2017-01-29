@@ -769,17 +769,17 @@ function Nami:LoadMenu()
 	self.Menu.Qset:MenuElement({id = "Immobile",name = "Auto on Immobile",value = true})
 	self.Menu.Qset:MenuElement({id = "Interrupt",name = "Auto Interrupt Spells",value = true})
 
-	self.Menu:MenuElement({type = MENU, id = "Wset", name = "> W Settings"})
-	self.Menu.Wset:MenuElement({id = "Combo", name = "Use in Combo",value = true})
-	self.Menu.Wset:MenuElement({ id = "Harass", name = "Use in Harass",value = true})
+	self.Menu:MenuElement({type = MENU, id = "Eset", name = "> E Settings"})
+	self.Menu.Eset:MenuElement({id = "Combo", name = "Use in Combo",value = true})
+	self.Menu.Eset:MenuElement({ id = "Harass", name = "Use in Harass",value = true})
 	
 	
-	self.Menu:MenuElement({id = "Eset", name = "> E Settings", type = MENU})
-	self.Menu.Eset:MenuElement({id = "AutoE", name = "Enable Auto Health",value = true})
-	self.Menu.Eset:MenuElement({id = "Me", name = "Heal me",value = true})
-	self.Menu.Eset:MenuElement({id = "MyHp", name = "Heal me if HP Percent below ",value = 50, min = 0, max = 100,step = 1})
-	self.Menu.Eset:MenuElement({id = "Ally", name = "Heal Allies",value = true})
-	self.Menu.Eset:MenuElement({id = "AllyHp", name = "Heal Allies if HP Percent below ",value = 80, min = 0, max = 100,step = 1})
+	self.Menu:MenuElement({id = "Wset", name = "> W Settings", type = MENU})
+	self.Menu.Wset:MenuElement({id = "AutoW", name = "Enable Auto Health",value = true})
+	self.Menu.Wset:MenuElement({id = "Me", name = "Heal me",value = true})
+	self.Menu.Wset:MenuElement({id = "MyHp", name = "Heal me if HP Percent below ",value = 50, min = 0, max = 100,step = 1})
+	self.Menu.Wset:MenuElement({id = "Ally", name = "Heal Allies",value = true})
+	self.Menu.Wset:MenuElement({id = "AllyHp", name = "Heal Allies if HP Percent below ",value = 80, min = 0, max = 100,step = 1})
 	
 	self.Menu:MenuElement({id = "Rset", name = "> R Settings",type = MENU})
 	self.Menu.Rset:MenuElement({id = "AimR",name = "R-Cast Assistant Key", key = string.byte("T")})
@@ -823,18 +823,18 @@ function Nami:GetTarget(range)
 	return GetUglyTarget(range)
 end
 
-function Nami:AutoE()
-	if (not isReady(_E) or not self.Menu.Eset.AutoE:Value())then return end
+function Nami:AutoW()
+	if (not isReady(_W) or not self.Menu.Wset.AutoW:Value())then return end
 	for i, ally in pairs(self.Allies) do
-		if isValidTarget(ally,E.range) then
+		if isValidTarget(ally,W.range) then
 			if ally.isMe then
-				if hero.health/hero.maxHealth  < self.Menu.Eset.MyHp:Value()/100 then
-					Control.CastSpell("E",myHero)
+				if hero.health/hero.maxHealth  < self.Menu.Wset.MyHp:Value()/100 then
+					Control.CastSpell("W",myHero)
 					return
 				end	
 			else 
-				if hero.health/hero.maxHealth  < self.Menu.Eset.AllyHp:Value()/100 then
-					Control.CastSpell("E",ally)
+				if hero.health/hero.maxHealth  < self.Menu.Wset.AllyHp:Value()/100 then
+					Control.CastSpell("W",ally)
 					return
 				end	
 			end			
@@ -854,8 +854,8 @@ function Nami:Tick()
 	if isReady(_R) then
 		self:AutoR()
 	end
-	if isReady(_E) then
-		self:AutoE()
+	if isReady(_W) then
+		self:AutoW()
 	end
 	if self.Menu.Key.Combo:Value() then
 		self:Combo()
@@ -884,25 +884,25 @@ function Nami:CastR(unit)
 	end
 end
 
-function Nami:CastW(unit)
+function Nami:CastE(unit)
 	if not unit then return end
-	Control.CastSpell("W",unit)
+	Control.CastSpell("E",unit)
 end
 
 function Nami:Combo()
 	local qtarget = self:GetTarget(Q.range)
-	local wtarget = self:GetTarget(W.range)
+	local etarget = self:GetTarget(E.range)
 	
 	if qtarget and isReady(_Q) and self.Menu.Qset.Combo:Value() then
 		self:CastQ(qtarget)
 	end
-	if wtarget and isReady(_W) and self.Menu.Wset.Combo:Value()  then
-		self:CastW(wtarget)
+	if etarget and isReady(_E) and self.Menu.Eset.Combo:Value()  then
+		self:CastE(etarget)
 	end
-	if isReady(_W) and self.Menu.Wset.Combo:Value() then
+	if isReady(_E) and self.Menu.Eset.Combo:Value() then
 		for id, hero in pairs(self.Allies) do
-			if isValidTarget(hero,W.range) and  hero.attackData.state == 2 and self.Enemies[hero.attackData.target] then  
-				Control.CastSpell("W",hero)
+			if isValidTarget(hero,E.range) and  hero.attackData.state == 2 and self.Enemies[hero.attackData.target] then  
+				Control.CastSpell("E",hero)
 			end
 		end
 	end
@@ -910,13 +910,13 @@ end
 
 function Nami:Harass()
 	local qtarget = self:GetTarget(Q.range)
-	local wtarget = self:GetTarget(W.range)
+	local etarget = self:GetTarget(E.range)
 	
 	if qtarget and isReady(_Q) and self.Menu.Qset.Harass:Value() then
 		self:CastQ(qtarget)
 	end
-	if wtarget and isReady(_W) and self.Menu.Wset.Harass:Value() and (not isReady(_Q) or myHero.mana > myHero:GetSpellData(_R).mana ) then
-		self:CastW(wtarget)
+	if etarget and isReady(_W) and self.Menu.Eset.Harass:Value() and (not isReady(_Q) or myHero.mana > myHero:GetSpellData(_R).mana ) then
+		self:CastE(etarget)
 	end
 end
 
