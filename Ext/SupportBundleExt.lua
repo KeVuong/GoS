@@ -53,6 +53,8 @@ end
 
 AutoInterrupter = AutoInterrupter or _AutoInterrupter()
 
+
+
 local MissileSpells = {
 ["Sion"] = {"SionEMissile"},
 ["Velkoz"] = {"VelkozQMissile","VelkozQMissileSplit","VelkozWMissile","VelkozEMissile"},
@@ -70,7 +72,7 @@ local MissileSpells = {
 ["Xerath"] = {"xeratharcanopulse2","XerathArcaneBarrage2","XerathMageSpearMissile","xerathrmissilewrapper"},
 ["Nocturne"] = {"NocturneDuskbringer"},
 ["AurelionSol"] = {"AurelionSolQMissile","AurelionSolRBeamMissile"},
-["Lucian"] = {"LucianQ","lucianwmissile","lucianrmissileoffhand"},
+["Lucian"] = {"LucianQ","LucianWMissile","lucianrmissileoffhand"},
 ["Ivern"] = {"IvernQ"},
 ["Tristana"] = {"RocketJump"},
 ["Viktor"] = {"ViktorDeathRayMissile"},
@@ -96,15 +98,15 @@ local MissileSpells = {
 ["Quinn"] = {"QuinnQ"},
 ["Urgot"] = {"UrgotHeatseekingLineMissile","UrgotPlasmaGrenadeBoom"},
 ["Cassiopeia"] = {"CassiopeiaQ","CassiopeiaR"},
-["Sejuani"] = {"","sejuaniglacialprison"},
+["Sejuani"] = {"sejuaniglacialprison"},
 ["Vi"] = {"ViQMissile"},
 ["Leona"] = {"LeonaZenithBladeMissile","LeonaSolarFlare"},
-["Veigar"] = {"VeigarBalefulStrikeMis","",""},
+["Veigar"] = {"VeigarBalefulStrikeMis"},
 ["Varus"] = {"VarusQMissile","VarusE","VarusRMissile"},
 ["Aatrox"] = {"","AatroxEConeMissile"},
 ["Twitch"] = {"TwitchVenomCaskMissile"},
 ["Thresh"] = {"ThreshQMissile","ThreshEMissile1"},
-["Diana"] = {"DianaArcArc","DianaArcArc"},
+["Diana"] = {"DianaArcThrow"},
 ["Draven"] = {"DravenDoubleShotMissile","DravenR"},
 ["Talon"] = {"talonrakemissileone","talonrakemissiletwo"},
 ["JarvanIV"] = {"JarvanIVDemacianStandard"},
@@ -115,7 +117,6 @@ local MissileSpells = {
 ["Gnar"] = {"gnarqmissile","GnarQMissileReturn","GnarBigQMissile","GnarBigW","GnarE","GnarBigE",""},
 ["Bard"] = {"BardQMissile","BardR"},
 ["Riven"] = {"RivenLightsaberMissile"},
-["Orianna"] = {"orianaizuna","","OrianaDissonanceCommand-","orianaredact","OrianaDetonateCommand-"},
 ["Anivia"] = {"FlashFrostSpell"},
 ["Karma"] = {"KarmaQMissile","KarmaQMissileMantra"},
 ["Jayce"] = {"JayceShockBlastMis","JayceShockBlastWallMis"},
@@ -134,8 +135,8 @@ local MissileSpells = {
 ["Nidalee"] = {"JavelinToss"},
 ["Olaf"] = {"olafaxethrow"},
 ["Nautilus"] = {"NautilusAnchorDragMissile"},
-["Kled"] = {"KledQMissile","","KledRiderQMissile"},
-["Brand"] = {"BrandQMissile",""},
+["Kled"] = {"KledQMissile","KledRiderQMissile"},
+["Brand"] = {"BrandQMissile"},
 ["Ekko"] = {"ekkoqmis","EkkoW","EkkoR"},
 ["Fiora"] = {"FioraWMissile"},
 ["Graves"] = {"GravesQLineMis","GravesChargeShotShot"},
@@ -153,7 +154,6 @@ local MissileSpells = {
 ["Fizz"] = {"FizzRMissile"},
 ["Kassadin"] = {"RiftWalk"},
 }
-
 
 function isReady(slot)
 	return myHero:GetSpellData(slot).level > 0 and myHero:GetSpellData(slot).currentCd == 0 and (myHero.mana >= myHero:GetSpellData(slot).mana)
@@ -828,12 +828,12 @@ function Nami:AutoW()
 	for i, ally in pairs(self.Allies) do
 		if isValidTarget(ally,W.range) then
 			if ally.isMe then
-				if hero.health/hero.maxHealth  < self.Menu.Wset.MyHp:Value()/100 then
+				if ally.health/ally.maxHealth  < self.Menu.Wset.MyHp:Value()/100 then
 					Control.CastSpell("W",myHero)
 					return
 				end	
 			else 
-				if hero.health/hero.maxHealth  < self.Menu.Wset.AllyHp:Value()/100 then
+				if ally.health/ally.maxHealth  < self.Menu.Wset.AllyHp:Value()/100 then
 					Control.CastSpell("W",ally)
 					return
 				end	
