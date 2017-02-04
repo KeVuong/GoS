@@ -1,4 +1,5 @@
 --vesion 1.0.0.1
+
 if Ext_Lib_Loaded then return end
 Ext_Lib_Loaded = true
 
@@ -143,17 +144,18 @@ function VectorPointProjectionOnLineSegment(v1,v2,v)
 	return pointSegment, pointLine, isOnSegment
 end
 
+
 class "_AutoInterrupter"
 function _AutoInterrupter:__init()
 	self.Spells = {
-		["Fiddlesticks"] = {{Key = _W, Duration = 5, KeyName = "W" },{Key = _R,Delay = 1,KeyName = "R"  }},
+		["Fiddlesticks"] = {{Key = _W, Duration = 5, KeyName = "W" },{Key = _R,Duration = 1,KeyName = "R"  }},
 		["VelKoz"] = {{Key = _R, Duration = 1, KeyName = "R", Buff = "VelkozR" }},
-		["Warwick"] = {{Key = _R, Duration = 1,KeyName = "R" , Buff = "infiniteduresssound"}},
+		["Warwick"] = {{Key = _R, Duration = 1,KeyName = "R" , Buff = "warwickrsound"}},
 		["MasterYi"] = {{Key = _W, Duration = 4,KeyName = "W", Buff = "Meditate" }},
 		["Lux"] = {{Key = _R, Duration = 1,KeyName = "R" }},
 		["Janna"] = {{Key = _R, Duration = 3,KeyName = "R",Buff = "ReapTheWhirlwind" }},
 		["Jhin"] = {{Key = _R, Duration = 1,KeyName = "R" }},
-		["Xerath"] = {{Key = _R, Duration = 3,KeyName = "R", Name = "XerathLocusOfPower2" }},
+		["Xerath"] = {{Key = _R, Duration = 3,KeyName = "R", SpellName = "XerathLocusOfPower2" }},
 		["Karthus"] = {{Key = _R, Duration = 3,KeyName = "R", Buff = "karthusfallenonecastsound" }},
 		["Ezreal"] = {{Key = _R, Duration = 1,KeyName = "R" }},
 		["Galio"] = {{Key = _R, Duration = 2,KeyName = "R", Buff = "GalioIdolOfDurand" }},
@@ -169,12 +171,11 @@ end
 function _AutoInterrupter:IsChannelling(unit)
 	if not self.Spells[unit.charName] then return false end
 	local result = false
-	for _, tab in pairs(self.Spells[charName]) do
-		for __,info in pairs(tab) do
-			if unit:GetSpellData(info.Key).name == info.SpellName or unit:GetSpellData(info.Key).currentCd > unit:GetSpellData(info.Key).cd - info.Duration or self:GotBuff(unit,info.Buff) > 0 then
+	for _, spell in pairs(self.Spells[unit.charName]) do
+		if unit:GetSpellData(spell.Key).level > 0 and (unit:GetSpellData(spell.Key).name == spell.SpellName or unit:GetSpellData(spell.Key).currentCd > unit:GetSpellData(spell.Key).cd - spell.Duration or (spell.Buff and self:GotBuff(unit,spell.Buff) > 0)) then
 				result = true
 				break
-			end
+			
 		end
 	end
 	return result
