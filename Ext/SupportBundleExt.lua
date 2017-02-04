@@ -7,14 +7,14 @@ require "DamageLib"
 class "_AutoInterrupter"
 function _AutoInterrupter:__init()
 	self.Spells = {
-		["Fiddlesticks"] = {{Key = _W, Duration = 5, KeyName = "W" },{Key = _R,Delay = 1,KeyName = "R"  }},
+		["Fiddlesticks"] = {{Key = _W, Duration = 5, KeyName = "W" },{Key = _R,Duration = 1,KeyName = "R"  }},
 		["VelKoz"] = {{Key = _R, Duration = 1, KeyName = "R", Buff = "VelkozR" }},
-		["Warwick"] = {{Key = _R, Duration = 1,KeyName = "R" , Buff = "infiniteduresssound"}},
+		["Warwick"] = {{Key = _R, Duration = 1,KeyName = "R" , Buff = "warwickrsound"}},
 		["MasterYi"] = {{Key = _W, Duration = 4,KeyName = "W", Buff = "Meditate" }},
 		["Lux"] = {{Key = _R, Duration = 1,KeyName = "R" }},
 		["Janna"] = {{Key = _R, Duration = 3,KeyName = "R",Buff = "ReapTheWhirlwind" }},
 		["Jhin"] = {{Key = _R, Duration = 1,KeyName = "R" }},
-		["Xerath"] = {{Key = _R, Duration = 3,KeyName = "R", Name = "XerathLocusOfPower2" }},
+		["Xerath"] = {{Key = _R, Duration = 3,KeyName = "R", SpellName = "XerathLocusOfPower2" }},
 		["Karthus"] = {{Key = _R, Duration = 3,KeyName = "R", Buff = "karthusfallenonecastsound" }},
 		["Ezreal"] = {{Key = _R, Duration = 1,KeyName = "R" }},
 		["Galio"] = {{Key = _R, Duration = 2,KeyName = "R", Buff = "GalioIdolOfDurand" }},
@@ -30,12 +30,11 @@ end
 function _AutoInterrupter:IsChannelling(unit)
 	if not self.Spells[unit.charName] then return false end
 	local result = false
-	for _, tab in pairs(self.Spells[charName]) do
-		for __,info in pairs(tab) do
-			if unit:GetSpellData(info.Key).name == info.SpellName or unit:GetSpellData(info.Key).currentCd > unit:GetSpellData(info.Key).cd - info.Duration or self:GotBuff(unit,info.Buff) > 0 then
+	for _, spell in pairs(self.Spells[unit.charName]) do
+		if unit:GetSpellData(spell.Key).level > 0 and (unit:GetSpellData(spell.Key).name == spell.SpellName or unit:GetSpellData(spell.Key).currentCd > unit:GetSpellData(spell.Key).cd - spell.Duration or (spell.Buff and self:GotBuff(unit,spell.Buff) > 0)) then
 				result = true
 				break
-			end
+			
 		end
 	end
 	return result
@@ -452,6 +451,7 @@ function Morgana:WndMsg(msg,key)
 			local enemy = Game.Hero(i)
 			if isValidTarget(enemy) and enemy.isEnemy and enemy.pos:DistanceTo(mousePos) < 200 then
 				starget = enemy
+				break
 			end
 		end
 		if starget then
@@ -485,6 +485,7 @@ function Janna:__init()
 		end	
 	end	
 	self.lastTick = 0
+	self.LastSpellT = 0
 	self.SelectedTarget = nil
 	self:LoadData()
 	self:LoadMenu()
@@ -578,26 +579,29 @@ function Janna:ProcessMissile()
 			local width = obj.missileData.width
 			local endPos = obj.missileData.endPos
 			local pos = obj.pos
-			if speed and width and endPos and pos then
+			if speed and width > 0 and endPos and pos then
 				for k, hero in pairs(allies) do 
 					if isValidTarget(hero,E.range) and hero.health/hero.maxHealth  < self.Menu.Eset.HP:Value()/100 then
 						local pointSegment,pointLine,isOnSegment = VectorPointProjectionOnLineSegment(pos,endPos,hero.pos)
-						if isOnSegment and hero.pos:DistanceTo(Vector(pointSegment.x,myHero.pos.y,pointSegment.y)) < width+ hero.boundingRadius then
+						if isOnSegment and hero.pos:DistanceTo(Vector(pointSegment.x,myHero.pos.y,pointSegment.y)) < width+ hero.boundingRadius and os.clock() - self.LastSpellT > 0.35 then
+							self.LastSpellT = os.clock()
 							Control.CastSpell("E",hero)
 						end
 					end
 				end
-			elseif pos then
+				
+			elseif pos and endPos then
 				for k,hero in pairs(allies)	do
-					if isValidTarget(hero,E.range) and pos:DistanceTo(hero.pos) < 80 and hero.health/hero.maxHealth  < self.Menu.Eset.HP:Value()/100  then
+					if isValidTarget(hero,E.range) and (pos:DistanceTo(hero.pos) < 80 or Vector(endPos):DistanceTo(hero.pos) < 80) and hero.health/hero.maxHealth  < self.Menu.Eset.HP:Value()/100  then
 						Control.CastSpell("E",hero)--not sure 
 					end
 				end
 			end
+			--Shield Attacks 
 		elseif obj and obj.isEnemy and obj.missileData and obj.missileData.name and not obj.missileData.name:find("Minion") and obj.missileData.target > 0 then
 			local target = obj.missileData.target
 			for k, hero in pairs(allies) do 
-				if isValidTarget(hero,E.range) and target == hero.handle then
+				if isValidTarget(hero,E.range) and target == hero.handle and hero.health/hero.maxHealth  < self.Menu.Eset.HP:Value()/100  then
 					Control.CastSpell("E",hero)
 				end
 			end
@@ -628,14 +632,18 @@ end
 function Janna:CastQ(unit)
 	if not unit  then return end
 		local pos =  unit:GetPrediction(Q.speed,Q.delay)
-		if pos then
+		if pos and os.clock() - self.LastSpellT > 0.35 then
+			self.LastSpellT = os.clock()
 			Control.CastSpell("Q",pos)
 		end
 	
 end
 
 function Janna:CastW(unit)
-	Control.CastSpell("W",unit)
+	if os.clock() - self.LastSpellT > 0.35 then
+		self.LastSpellT = os.clock()
+		Control.CastSpell("W",unit)
+	end
 end
 
 function Janna:Combo()
@@ -650,7 +658,8 @@ function Janna:Combo()
 	end
 	if isReady(_E) and self.Menu.Eset.Combo:Value() then
 		for id, hero in pairs(self.Allies) do
-			if isValidTarget(hero,E.range) and  hero.attackData.state == 2 and self.Enemies[hero.attackData.target] then  
+			if isValidTarget(hero,E.range) and  hero.attackData.state == 2 and self.Enemies[hero.attackData.target] and os.clock() - self.LastSpellT > 0.35 then  
+				self.LastSpellT = os.clock()
 				Control.CastSpell("E",hero)
 			end
 		end
@@ -715,6 +724,7 @@ function Janna:WndMsg(msg,key)
 			local enemy = Game.Hero(i)
 			if isValidTarget(enemy) and enemy.isEnemy and enemy.pos:DistanceTo(mousePos) < 200 then
 				starget = enemy
+				break
 			end
 		end
 		if starget then
@@ -757,12 +767,11 @@ function Nami:__init()
 end
 
 function Nami:LoadMenu()
-	self.Menu = MenuElement( {id =  "SB"..myHero.charName, name = "Nami - The River Spirit", type = MENU})
+	self.Menu = MenuElement( {id = "SB"..myHero.charName, name = "Nami - The River Spirit", type = MENU})
 	self.Menu:MenuElement({id = "Key", name = "> Key Settings", type = MENU})
 	self.Menu.Key:MenuElement({id = "Combo",name = "Combo", key = 32})
 	self.Menu.Key:MenuElement({id = "Harass",name = "Harass", key = string.byte("C")})
 
-	
 	self.Menu:MenuElement({type = MENU, id = "Qset", name = "> Q Settings"})
 	self.Menu.Qset:MenuElement({id = "Combo",name = "Use in Combo", value = true })
 	self.Menu.Qset:MenuElement({id = "Harass", name = "Use in Harass", value = true})
@@ -772,7 +781,6 @@ function Nami:LoadMenu()
 	self.Menu:MenuElement({type = MENU, id = "Eset", name = "> E Settings"})
 	self.Menu.Eset:MenuElement({id = "Combo", name = "Use in Combo",value = true})
 	self.Menu.Eset:MenuElement({ id = "Harass", name = "Use in Harass",value = true})
-	
 	
 	self.Menu:MenuElement({id = "Wset", name = "> W Settings", type = MENU})
 	self.Menu.Wset:MenuElement({id = "AutoW", name = "Enable Auto Health",value = true})
@@ -791,10 +799,7 @@ function Nami:LoadMenu()
 	self.Menu.Draw:MenuElement({id = "W", name = "Draw W Range", value = true})
 	self.Menu.Draw:MenuElement({id = "E", name = "Draw E Range", value = true})
 	self.Menu.Draw:MenuElement({id = "R", name = "Draw R Range", value = true})
-	
-	
 	PrintChat("SupportBundle: "..myHero.charName.." Loaded")
-
 end
 
 function Nami:LoadData()
@@ -972,6 +977,7 @@ function Nami:WndMsg(msg,key)
 			local enemy = Game.Hero(i)
 			if isValidTarget(enemy) and enemy.isEnemy and enemy.pos:DistanceTo(mousePos) < 200 then
 				starget = enemy
+				break
 			end
 		end
 		if starget then
