@@ -1,11 +1,20 @@
 if myHero.charName ~= "Thresh" then return end
 
-require "DamageLib"
+local path = SCRIPT_PATH.."Loader.lua"
+
+if FileExist(path) then
+	_G.Enable_Ext_Lib = true
+	loadfile(path)()
+end	
+
 -- Spell Data
-local Q = {delay = 0.5,radius = 80,range = 1050,speed = 1900}
+local Q = {Delay = 0.5,Radius = 80,Range = 1050,Speed = 1900,CollisionObjects = {"Hero","Minion"}}
+
 local W = {delay = 0.25,radius = 80,range = 950,speed = 1900}
 local E = {delay = 0.250,radius = 80,range = 460,speed = 2000}
 local R = {delay = 0.35,radius = 80,range = 400,speed = 1900}
+local Ts = TargetSelector
+local Pred = Prediction
 local lastq = 0
 -- Menu
 local ThreshMenu = MenuElement({type = MENU, id = "ThreshMenu", name = "Thresh (Alpha)", leftIcon = "http://puu.sh/tkApW/5b630c1ecc.png"})
@@ -35,14 +44,13 @@ ThreshMenu.Drawing:MenuElement({id = "ERange", name = "E Range", value = true})
 
 function GetUglyTarget(range)
 	local result = nil
-	local N = math.huge
+	local N = 0
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
-		if isValidTarget(hero,range) and hero.isEnemy then
-			local dmgtohero = getdmg("AA",hero,myHero) or 1
+		if isValidTarget(hero,range) and hero.team ~= myHero.team then
+			local dmgtohero = getdmg("AA",hero,myHero)
 			local tokill = hero.health/dmgtohero
-			if tokill < N or result == nil then
-				N = tokill
+			if tokill > N or result == nil then
 				result = hero
 			end
 		end
@@ -80,20 +88,14 @@ function OnTick()
 			Control.CastSpell("Q")
 		end
 		if isReady(_Q) and isQ1() and ThreshMenu.Combo.UseQ:Value() then
-			local target = GetUglyTarget(Q.range)
-			if target and target:GetCollision(Q.radius,Q.speed,Q.delay) == 0 and target.distance >= ThreshMenu.Combo.MinQ:Value() then
-				local pos 
-				if IsImmobileTarget(target) or target.attackData.state == 2 then
-					pos = Vector(target.pos)
-				else
-					pos = target:GetPrediction(Q.speed,Q.delay)
+			local target = Ts:GetTarget(Q.Range)
+			if target and GetDistance(target.pos,myHero.pos) >= ThreshMenu.Combo.MinQ:Value() then
+				local CastPosition, HitChance =  Pred:GetPrediction(target,Q)
+				--LastPos = CastPosition
+				if HitChance == "High" then
+					SpellCast:Add("Q",CastPosition)
+					--Control.CastSpell("Q",CastPosition)
 				end
-				if Vector(pos):DistanceTo() < Q.range then
-					LastPos = pos	
-					lastq = os.clock()
-					Control.CastSpell("Q",pos)
-					
-				end	
 			end
 		end
 	
@@ -146,13 +148,13 @@ end
 function OnDraw()
 	if myHero.dead then return end
 	if ThreshMenu.Drawing.QRange:Value() then
-		Draw.Circle(myHero.pos,Q.range,1,Draw.Color(255, 228, 196, 255))
+		Draw.Circle(myHero.pos,Q.Range,1,Draw.Color(255, 228, 196, 255))
 	end	
 	if ThreshMenu.Drawing.ERange:Value() then
 		Draw.Circle(myHero.pos,E.range,1,Draw.Color(255, 228, 196, 255))
 	end	
 	if LastPos then 
-		Draw.Circle(LastPos,100,2,Draw.Color(255, 228, 196, 255))
+		Draw.Circle(LastPos,80,2,Draw.Color(255, 228, 196, 255))
 	end
 end
 
