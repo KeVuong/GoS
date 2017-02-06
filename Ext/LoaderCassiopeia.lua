@@ -1,6 +1,6 @@
 if myHero.charName ~= "Cassiopeia" then return end
 
-local path = SCRIPT_PATH.."Loader00.lua"
+local path = SCRIPT_PATH.."Loader.lua"
 
 if FileExist(path) then
 	_G.Enable_Ext_Lib = true
