@@ -385,15 +385,15 @@ end
 function Cassiopeia:Draw()
 	if myHero.dead then return end
 	if self.Menu.Drawing.DrawQ:Value() and myHero:GetSpellData(0).level > 0 then
-		local qcolor = isReady(0) and  Draw.Color(189, 183, 107, 255) or Draw.Color(240,255,0,0)
+		local qcolor = isReady(0) and  Draw.Color(189, 183, 107, 255) or Draw.Color(150,255,0,0)
 		Draw.Circle(Vector(myHero.pos),Q.Range,1,qcolor)
 	end
 	if self.Menu.Drawing.DrawR:Value() and myHero:GetSpellData(3).level > 0  then
-		local rcolor = isReady(3) and  Draw.Color(240,30,144,255) or Draw.Color(240,255,0,0)
+		local rcolor = isReady(3) and  Draw.Color(240,30,144,255) or Draw.Color(150,255,0,0)
 		Draw.Circle(Vector(myHero.pos),R.Range,1,rcolor)
 	end
 	if self.Menu.Drawing.DrawE:Value() and myHero:GetSpellData(2).level > 0 then
-		local ecolor = isReady(2) and  Draw.Color(233, 150, 122, 255) or Draw.Color(240,255,0,0)
+		local ecolor = isReady(2) and  Draw.Color(233, 150, 122, 255) or Draw.Color(150,255,0,0)
 		Draw.Circle(Vector(myHero.pos),E.Range,1,ecolor)
 	end
 	if LastPos then 
