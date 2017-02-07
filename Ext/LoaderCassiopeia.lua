@@ -120,7 +120,7 @@ function Cassiopeia:CastQ(target)
 	local CastPosition, Hitchance = Pred:GetPrediction(target,Q)
 	if Hitchance == "High" then
 		--LastPos = CastPosition
-		SpellCast:Add("Q",CastPosition,0.6)
+		SpellCast:Add("Q",CastPosition,0.7)
 	end
 end
 
@@ -161,9 +161,9 @@ function Cassiopeia:IsKillable(target)
 	if isReady(0) then
 		totalDmg  = totalDmg + qDmg
 	end
-	if isReady(2) then
+	--if isReady(2) then
 		totalDmg = totalDmg + eDmg*3
-	end
+	--end
 	if totalDmg < target.health and totalDmg + rDmg + 1.5*eDmg > target.health then 
 		return true
 	end
@@ -198,7 +198,7 @@ function Cassiopeia:Combo(OW,Minions)
 			self:CastQ(enemy)
 			return
 		end
-		if ValidTarget(enemy,E.Range) and isReady(2) and self:GetDamage("E",enemy) > enemy.health and not isReady(0) then
+		if ValidTarget(enemy,E.Range) and isReady(2) and 2*self:GetDamage("E",enemy) > enemy.health and not isReady(0) then
 			self:CastE(enemy)
 			return
 		end
@@ -292,12 +292,15 @@ function Cassiopeia:LaneClear(OW,Minions)
 				return
 			end
 		end
-	else
+	elseif #minions > 0 then
 		if myHero.mana/myHero.maxMana < self.Menu.LaneClear.MinMana:Value()/100 then return end
 		if not isReady(0) then return end
+		if #minions == 1 and minions[1].health < myHero.totalDamage then
+			return
+		end
 		local bestPos, bestHit = GetBestCircularFarmPosition(Q.Range,Q.Radius + 40, minions)
 		if bestHit > 0 then
-			SpellCast:Add("Q",bestPos)
+			SpellCast:Add("Q",bestPos,0.6)
 		end
 	end	
 	
@@ -318,7 +321,7 @@ function Cassiopeia:JungleClear(OW,Minions)
 			return
 		end
 		if isReady(0) then
-			SpellCast:Add("Q", mob.pos)
+			SpellCast:Add("Q", mob.pos,0.6)
 		end
 	end
 end
@@ -345,7 +348,7 @@ function Cassiopeia:LastHit(OW,Minions)
 	if isReady(0) and qlasthit then
 		for i,minion in pairs(Minions[ENEMY]) do
 			if ValidTarget(minion,Q.Range) and getdmg("Q",minion) > minion.health and minion.health > myHero.totalDamage then
-				SpellCast:Add("Q", minion.pos)
+				SpellCast:Add("Q", minion.pos,0.6)
 			end
 		end		
 	end
@@ -402,3 +405,5 @@ function Cassiopeia:Draw()
 end
 
 Cassiopeia()
+
+
