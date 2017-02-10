@@ -1153,7 +1153,7 @@ end
 function Soraka:AutoR()
 	if (not isReady(_R) or not self.Menu.Rset.AutoR:Value())then return end
 	for i, ally in pairs(self.Allies) do
-		if (ally.health/ally.maxHealth  < self.Menu.Wset.MyHp:Value()/100) and (CountEnemies(hero.pos,E.range - 100) > 0) then
+		if (ally.health/ally.maxHealth  < self.Menu.Wset.MyHp:Value()/100) and (CountEnemies(ally.pos,E.range - 100) > 0) then
 			Control.CastSpell("R")
 			return
 		end	
