@@ -1,12 +1,12 @@
 if myHero.charName ~= "Cassiopeia" then return end
 
-local path = SCRIPT_PATH.."Loader.lua"
+local path = SCRIPT_PATH.."ExtLib.lua"
 
 if FileExist(path) then
 	_G.Enable_Ext_Lib = true
 	loadfile(path)()
 else
-	
+	print("ExtLib Not Found. Please update it")
 end	
 
 local Ts = TargetSelector
