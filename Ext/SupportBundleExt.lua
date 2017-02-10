@@ -1,4 +1,4 @@
-local myHeroes = { Morgana = true, Janna = true, Nami = true}
+local myHeroes = { Morgana = true, Janna = true, Nami = true, Soraka = true}
 
 if not myHeroes[myHero.charName] then return end
 
@@ -988,5 +988,229 @@ function Nami:WndMsg(msg,key)
 		end
 	end	
 end
+
+--[[Soraka]]
+
+
+class "Soraka"
+
+function Soraka:__init()
+	Q = {ready = false, range = 810, radius = 235, speed = math.huge, delay = 0.250, type = "circular"}
+	W = {ready = false, range = 550,}
+	E = {ready = false, range = 925, radius = 310, speed = math.huge, delay = 1.75, type = "circular"}
+	R = {ready = false, range = math.huge,}
+	
+	self.Enemies = {}
+	self.Allies = {}
+	for i = 1,Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly then
+			self.Allies[hero.handle] = hero
+		else
+			self.Enemies[hero.handle] = hero
+		end	
+	end	
+	self.lastTick = 0
+	self.SelectedTarget = nil
+	self:LoadData()
+	self:LoadMenu()
+	Callback.Add("Tick",function() self:Tick() end)
+	Callback.Add("Draw",function() self:Draw() end)
+	Callback.Add("WndMsg",function(Msg, Key) self:WndMsg(Msg, Key) end)
+end
+
+function Soraka:LoadMenu()
+	self.Menu = MenuElement( {id = "SB"..myHero.charName, name = "Soraka - The Starchild", type = MENU, leftIcon = "http://ddragon.leagueoflegends.com/cdn/6.24.1/img/champion/Soraka.png"})
+	self.Menu:MenuElement({id = "Key", name = "> Key Settings", type = MENU})
+	self.Menu.Key:MenuElement({id = "Combo",name = "Combo", key = 32})
+	self.Menu.Key:MenuElement({id = "Harass",name = "Harass", key = string.byte("C")})
+
+	self.Menu:MenuElement({type = MENU, id = "Qset", name = "> Q Settings"})
+	self.Menu.Qset:MenuElement({id = "Combo",name = "Use in Combo", value = true })
+	self.Menu.Qset:MenuElement({id = "Harass", name = "Use in Harass", value = true})
+
+	self.Menu:MenuElement({type = MENU, id = "Eset", name = "> E Settings"})
+	self.Menu.Eset:MenuElement({id = "Combo", name = "Use in Combo",value = true})
+	self.Menu.Eset:MenuElement({id = "Harass", name = "Use in Harass",value = true})
+	self.Menu.Eset:MenuElement({id = "Immobile",name = "Auto on Immobile",value = true})
+	self.Menu.Eset:MenuElement({id = "Interrupt",name = "Auto Interrupt Spells",value = true})
+	
+	self.Menu:MenuElement({id = "Wset", name = "> W Settings", type = MENU})
+	self.Menu.Wset:MenuElement({id = "AutoW", name = "Enable Auto Health",value = true})
+	self.Menu.Wset:MenuElement({id = "MyHp", name = "Heal Allies if my HP Percent above ",value = 8, min = 1, max = 100,step = 1})
+	self.Menu.Wset:MenuElement({id = "AllyHp", name = "Heal Allies if HP Percent below ",value = 80, min = 1, max = 100,step = 1})
+	
+	self.Menu:MenuElement({id = "Rset", name = "> R Settings",type = MENU})
+	self.Menu.Rset:MenuElement({id = "AutoR", name = "Enable Auto R",value = true})
+	
+	self.Menu:MenuElement({type = MENU, id = "Draw",name = "> Draw Settings"})
+	self.Menu.Draw:MenuElement({id = "Q", name = "Draw Q Range", value = true})
+	self.Menu.Draw:MenuElement({id = "W", name = "Draw W Range", value = true})
+	self.Menu.Draw:MenuElement({id = "E", name = "Draw E Range", value = true})
+	PrintChat("SupportBundle: "..myHero.charName.." Loaded")
+end
+
+function Soraka:LoadData()
+	self.MissileSpells = {}
+	for i = 1,Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			if MissileSpells[hero.charName] then
+				for k,v in pairs(MissileSpells[hero.charName]) do
+					if #v > 1 then
+						self.MissileSpells[v] = true
+					end	
+				end
+			end
+		end
+	end
+end
+
+function Soraka:Tick()
+	if myHero.dead then return end
+	if self.SelectedTarget and self.SelectedTarget.dead then 
+		self.SelectedTarget = nil
+	end
+	--self:
+	if isReady(_E) then
+		self:AutoE()
+	end	
+	if isReady(_R) then
+		self:AutoR()
+	end
+	if isReady(_W) then
+		self:AutoW()
+	end
+	if self.Menu.Key.Combo:Value() then
+		self:Combo()
+	end
+	if self.Menu.Key.Harass:Value() then
+		self:Harass()
+	end
+end
+
+function Soraka:GetTarget(range)
+	if self.SelectedTarget and isValidTarget(self.SelectedTarget,range) then
+		return self.SelectedTarget
+	end	
+	return GetUglyTarget(range)
+end
+
+function Soraka:CastQ(unit)
+	if not unit then return end
+	local pos = unit:GetPrediction(Q.speed,Q.delay)
+		if pos then
+			Control.CastSpell("Q",pos)
+		end
+end
+
+function Soraka:CastE(unit)
+	if not unit then return end
+	local pos = unit:GetPrediction(E.speed,E.delay)
+		if pos then
+			Control.CastSpell("E",pos)
+		end
+end
+
+function Soraka:Combo()
+	local qtarget = self:GetTarget(Q.range)
+	local etarget = self:GetTarget(E.range)
+	
+	if etarget and isReady(_E) and self.Menu.Eset.Combo:Value()  then
+		self:CastE(etarget)
+	end
+	if qtarget and isReady(_Q) and self.Menu.Qset.Combo:Value() then
+		self:CastQ(qtarget)
+	end
+end
+
+function Soraka:Harass()
+	local qtarget = self:GetTarget(Q.range)
+	local etarget = self:GetTarget(E.range)
+	
+	if etarget and isReady(_E) and self.Menu.Eset.Harass:Value() and (myHero.mana > myHero:GetSpellData(_R).mana) then
+		self:CastE(etarget)
+	end
+	if qtarget and isReady(_Q) and self.Menu.Qset.Harass:Value() and (myHero.mana > myHero:GetSpellData(_R).mana) then
+		self:CastQ(qtarget)
+	end
+end
+
+function Soraka:AutoW()
+	if (not isReady(_W) or not self.Menu.Wset.AutoW:Value())then return end
+	for i, ally in pairs(self.Allies) do
+		if isValidTarget(ally,W.range) then
+			if not ally.isMe then
+				if (ally.health/ally.maxHealth  < self.Menu.Wset.AllyHp:Value()/100) and (myHero.health/myHero.maxHealth  >= self.Menu.Wset.MyHp:Value()/100) then
+					Control.CastSpell("W",ally)
+					return
+				end	
+			end			
+		end
+	end
+end
+
+function Soraka:AutoR()
+	if (not isReady(_R) or not self.Menu.Rset.AutoR:Value())then return end
+	for i, ally in pairs(self.Allies) do
+		if (ally.health/ally.maxHealth  < self.Menu.Wset.MyHp:Value()/100) and (CountEnemies(hero.pos,E.range - 100) > 0) then
+			Control.CastSpell("R")
+			return
+		end	
+	end
+end
+
+function Soraka:AutoE()
+	for i = 1, Game.HeroCount() do
+		local enemy  = Game.Hero(i)
+ 
+		if enemy.isEnemy and isReady(_E) and isValidTarget(enemy,E.range) and IsImmobileTarget(enemy) and self.Menu.Eset.Immobile:Value() then
+			self:CastE(enemy,enemy.pos)
+			return
+		end
+		if enemy.isEnemy and isReady(_E) and isValidTarget(enemy,E.range) and AutoInterrupter:IsChannelling(enemy) and self.Menu.Eset.Interrupt:Value() then
+			self:CastQ(enemy,enemy.pos)
+			return
+		end
+	end
+end
+
+function Soraka:Draw()
+	if myHero.dead then return end
+
+	if self.Menu.Draw.Q:Value() then
+		local qcolor = isReady(_Q) and  Draw.Color(189, 183, 107, 255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),Q.range,1,qcolor)
+	end
+	if self.Menu.Draw.W:Value() then
+		local wcolor = isReady(_W) and  Draw.Color(240,30,144,255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),W.range,1,wcolor)
+	end
+	if self.Menu.Draw.E:Value() then
+		local ecolor = isReady(_E) and  Draw.Color(233, 150, 122, 255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),E.range,1,ecolor)
+	end
+	--R
+end
+
+function Soraka:WndMsg(msg,key)
+	if msg == 513 then
+		local starget = nil
+		for i  = 1,Game.HeroCount(i) do
+			local enemy = Game.Hero(i)
+			if isValidTarget(enemy) and enemy.isEnemy and enemy.pos:DistanceTo(mousePos) < 200 then
+				starget = enemy
+				break
+			end
+		end
+		if starget then
+			self.SelectedTarget = starget
+			print("New target selected: "..starget.charName)
+		else
+			self.SelectedTarget = nil
+		end
+	end	
+end
+
 
 Callback.Add("Load",function() _G[myHero.charName]() end)
