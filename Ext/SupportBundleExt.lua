@@ -14,7 +14,7 @@ function _AutoInterrupter:__init()
 		["Lux"] = {{Key = _R, Duration = 1,KeyName = "R" }},
 		["Janna"] = {{Key = _R, Duration = 3,KeyName = "R",Buff = "ReapTheWhirlwind" }},
 		["Jhin"] = {{Key = _R, Duration = 1,KeyName = "R" }},
-		["Xerath"] = {{Key = _R, Duration = 3,KeyName = "R", SpellName = "XerathLocusOfPower2" }},
+		["Xerath"] = {{Key = _R, Duration = 3,KeyName = "R", SpellName = "XerathRMissileWrapper" }},
 		["Karthus"] = {{Key = _R, Duration = 3,KeyName = "R", Buff = "karthusfallenonecastsound" }},
 		["Ezreal"] = {{Key = _R, Duration = 1,KeyName = "R" }},
 		["Galio"] = {{Key = _R, Duration = 2,KeyName = "R", Buff = "GalioIdolOfDurand" }},
@@ -155,7 +155,7 @@ local MissileSpells = {
 }
 
 function isReady(slot)
-	return myHero:GetSpellData(slot).level > 0 and myHero:GetSpellData(slot).currentCd == 0 and (myHero.mana >= myHero:GetSpellData(slot).mana)
+	return Game.CanUseSpell(slot) == READY
 end
 
 function isValidTarget(obj,range)
@@ -325,14 +325,14 @@ function Morgana:ProcessMissile()
 					if isValidTarget(hero,E.range) then
 						local pointSegment,pointLine,isOnSegment = VectorPointProjectionOnLineSegment(pos,endPos,hero.pos)
 						if isOnSegment and hero.pos:DistanceTo(Vector(pointSegment.x,myHero.pos.y,pointSegment.y)) < width+ hero.boundingRadius then
-							Control.CastSpell("E",hero)
+							Control.CastSpell(HK_E,hero)
 						end
 					end
 				end
 			elseif pos then
 				for k,hero in pairs(allies)	 do
 					if isValidTarget(hero,E.range) and pos:DistanceTo(hero.pos) < 80 then
-						Control.CastSpell("E",hero)
+						Control.CastSpell(HK_E,hero)
 					end
 				end
 			end
@@ -355,7 +355,7 @@ function Morgana:Tick()
 	if self.Menu.Key.Harass:Value() then
 		self:Harass()
 	end
-	if isReady(_R) then
+	if Game.CanUseSpell(_R) == READY then
 		self:AutoR()
 	end
 	
@@ -365,7 +365,7 @@ function Morgana:CastQ(unit,pos)
 	if unit:GetCollision(Q.radius,Q.speed,Q.delay) == 0  then
 		pos = pos or unit:GetPrediction(Q.speed,Q.delay)
 		if pos then
-			Control.CastSpell("Q",pos)
+			Control.CastSpell(HK_Q,pos)
 		end
 	end
 end
@@ -373,7 +373,7 @@ end
 function Morgana:CastW(unit)
 	local pos = unit:GetPrediction(W.speed,W.delay)
 	if pos then
-		Control.CastSpell("W",pos)
+		Control.CastSpell(HK_W,pos)
 	end
 end
 
@@ -396,7 +396,7 @@ function Morgana:Harass()
 	if qtarget and isReady(_Q) and self.Menu.Qset.Harass:Value() then
 		self:CastQ(qtarget)
 	end
-	if wtarget and isReady(_W) and self.Menu.Wset.Harass:Value() and (not isReady(_Q) or myHero.mana > 200 ) then
+	if wtarget and Game.CanUseSpell(_W) == READY and self.Menu.Wset.Harass:Value() and (not isReady(_Q) or myHero.mana > 200 ) then
 		self:CastW(wtarget)
 	end
 end
@@ -404,7 +404,7 @@ end
 function Morgana:AutoR()
 	if self.Menu.Rset.AutoR:Value() then
 		if CountEnemies(myHero.pos,R.range - 50) >= self.Menu.Rset.Min:Value() then
-			Control.CastSpell("R")
+			Control.CastSpell(HK_R)
 		end
 	end
 end
@@ -418,7 +418,7 @@ function Morgana:AutoCC()
 			return
 		end
 		if enemy.isEnemy and isReady(_W) and isValidTarget(enemy,W.range) and IsImmobileTarget(enemy) and self.Menu.Wset.Immobile:Value() then
-			Control.CastSpell("W",enemy.pos)
+			Control.CastSpell(HK_W,enemy.pos)
 			return
 		end
 	end
@@ -585,7 +585,7 @@ function Janna:ProcessMissile()
 						local pointSegment,pointLine,isOnSegment = VectorPointProjectionOnLineSegment(pos,endPos,hero.pos)
 						if isOnSegment and hero.pos:DistanceTo(Vector(pointSegment.x,myHero.pos.y,pointSegment.y)) < width+ hero.boundingRadius and os.clock() - self.LastSpellT > 0.35 then
 							self.LastSpellT = os.clock()
-							Control.CastSpell("E",hero)
+							Control.CastSpell(HK_E,hero)
 						end
 					end
 				end
@@ -593,7 +593,7 @@ function Janna:ProcessMissile()
 			elseif pos and endPos then
 				for k,hero in pairs(allies)	do
 					if isValidTarget(hero,E.range) and (pos:DistanceTo(hero.pos) < 80 or Vector(endPos):DistanceTo(hero.pos) < 80) and hero.health/hero.maxHealth  < self.Menu.Eset.HP:Value()/100  then
-						Control.CastSpell("E",hero)--not sure 
+						Control.CastSpell(HK_E,hero)--not sure 
 					end
 				end
 			end
@@ -602,7 +602,7 @@ function Janna:ProcessMissile()
 			local target = obj.missileData.target
 			for k, hero in pairs(allies) do 
 				if isValidTarget(hero,E.range) and target == hero.handle and hero.health/hero.maxHealth  < self.Menu.Eset.HP:Value()/100  then
-					Control.CastSpell("E",hero)
+					Control.CastSpell(HK_E,hero)
 				end
 			end
 		end
@@ -634,7 +634,7 @@ function Janna:CastQ(unit)
 		local pos =  unit:GetPrediction(Q.speed,Q.delay)
 		if pos and os.clock() - self.LastSpellT > 0.35 then
 			self.LastSpellT = os.clock()
-			Control.CastSpell("Q",pos)
+			Control.CastSpell(HK_Q,pos)
 		end
 	
 end
@@ -642,7 +642,7 @@ end
 function Janna:CastW(unit)
 	if os.clock() - self.LastSpellT > 0.35 then
 		self.LastSpellT = os.clock()
-		Control.CastSpell("W",unit)
+		Control.CastSpell(HK_W,unit)
 	end
 end
 
@@ -660,7 +660,7 @@ function Janna:Combo()
 		for id, hero in pairs(self.Allies) do
 			if isValidTarget(hero,E.range) and  hero.attackData.state == 2 and self.Enemies[hero.attackData.target] and os.clock() - self.LastSpellT > 0.35 then  
 				self.LastSpellT = os.clock()
-				Control.CastSpell("E",hero)
+				Control.CastSpell(HK_E,hero)
 			end
 		end
 	end
@@ -682,7 +682,7 @@ function Janna:AutoR()
 	if self.Menu.Rset.AutoR:Value() then
 		for i, hero in pairs(self.Allies) do
 			if isValidTarget(hero,500) and hero.health/hero.maxHealth  < self.Menu.Rset.HP:Value()/100 and CountEnemies(hero.pos,R.range - 100) > 0  then
-				Control.CastSpell("R")
+				Control.CastSpell(HK_R)
 			end
 		end
 	end
@@ -834,12 +834,12 @@ function Nami:AutoW()
 		if isValidTarget(ally,W.range) then
 			if ally.isMe then
 				if ally.health/ally.maxHealth  < self.Menu.Wset.MyHp:Value()/100 then
-					Control.CastSpell("W",myHero)
+					Control.CastSpell(HK_W,myHero)
 					return
 				end	
 			else 
 				if ally.health/ally.maxHealth  < self.Menu.Wset.AllyHp:Value()/100 then
-					Control.CastSpell("W",ally)
+					Control.CastSpell(HK_W,ally)
 					return
 				end	
 			end			
@@ -876,7 +876,7 @@ function Nami:CastQ(unit)
 	if not unit then return end
 	local pos = unit:GetPrediction(Q.speed,Q.delay)
 		if pos then
-			Control.CastSpell("Q",pos)
+			Control.CastSpell(HK_Q,pos)
 		end
 
 end
@@ -885,13 +885,13 @@ function Nami:CastR(unit)
 	if not unit then return end
 	local pos = unit:GetPrediction(R.speed,R.delay)
 	if pos then
-		Control.CastSpell("R",pos)
+		Control.CastSpell(HK_R,pos)
 	end
 end
 
 function Nami:CastE(unit)
 	if not unit then return end
-	Control.CastSpell("E",unit)
+	Control.CastSpell(HK_E,unit)
 end
 
 function Nami:Combo()
@@ -907,7 +907,7 @@ function Nami:Combo()
 	if isReady(_E) and self.Menu.Eset.Combo:Value() then
 		for id, hero in pairs(self.Allies) do
 			if isValidTarget(hero,E.range) and  hero.attackData.state == 2 and self.Enemies[hero.attackData.target] then  
-				Control.CastSpell("E",hero)
+				Control.CastSpell(HK_E,hero)
 			end
 		end
 	end
@@ -1100,7 +1100,7 @@ function Soraka:CastQ(unit)
 	if not unit then return end
 	local pos = unit:GetPrediction(Q.speed,Q.delay)
 		if pos then
-			Control.CastSpell("Q",pos)
+			Control.CastSpell(HK_Q,pos)
 		end
 end
 
@@ -1108,7 +1108,7 @@ function Soraka:CastE(unit)
 	if not unit then return end
 	local pos = unit:GetPrediction(E.speed,E.delay)
 		if pos then
-			Control.CastSpell("E",pos)
+			Control.CastSpell(HK_E,pos)
 		end
 end
 
@@ -1142,7 +1142,7 @@ function Soraka:AutoW()
 		if isValidTarget(ally,W.range) then
 			if not ally.isMe then
 				if (ally.health/ally.maxHealth  < self.Menu.Wset.AllyHp:Value()/100) and (myHero.health/myHero.maxHealth  >= self.Menu.Wset.MyHp:Value()/100) then
-					Control.CastSpell("W",ally)
+					Control.CastSpell(HK_W,ally)
 					return
 				end	
 			end			
@@ -1154,7 +1154,7 @@ function Soraka:AutoR()
 	if (not isReady(_R) or not self.Menu.Rset.AutoR:Value())then return end
 	for i, ally in pairs(self.Allies) do
 		if (ally.health/ally.maxHealth  < self.Menu.Wset.MyHp:Value()/100) and (CountEnemies(ally.pos,E.range - 100) > 0) then
-			Control.CastSpell("R")
+			Control.CastSpell(HK_R)
 			return
 		end	
 	end
