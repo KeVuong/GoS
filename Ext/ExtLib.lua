@@ -6,7 +6,7 @@ print("External Lib v1.0.0.35 Loading")
 require "DamageLib"
 
 function isReady(slot)
-	return myHero:GetSpellData(slot).level > 0 and myHero:GetSpellData(slot).currentCd == 0 and (myHero.mana >= myHero:GetSpellData(slot).mana)
+	return Game.CanUseSpell(slot) == READY
 end
 
 
