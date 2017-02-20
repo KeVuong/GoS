@@ -30,12 +30,19 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 
-local ver = "20170112000"
+local ver = "20170220000"
 
 
 require "GoSWalk"
 require "OpenPredict"-- jouzuna 
 
+local GPred = _G.gPred
+
+if GoSWalk.Version < 0.36 then
+	PrintChat("SupportBundle: New GoSWalk Version Found. Downloading ...")
+	DownloadFileAsync("https://raw.githubusercontent.com/KeVuong/GoS/master/GoSWalk.lua", COMMON_PATH .. "GoSWalk.lua", function() PrintChat("SupportBundle: Download Complete, please 2x F6!") end)
+	return
+end
 
 	function CountAllyNearPos(pos, range)
 		if pos == nil or not range then return 0 end
@@ -744,7 +751,7 @@ end
 class "Morgana"
 
 function Morgana:__init()
-	Q = {ready = false, range = 1175, radius = 65, speed = 1200, delay = 0.2, type = "line",col = {"minion","champion"}}
+	Q = {ready = false, range = 1175, radius = 65, speed = 1200, delay = 0.25, type = "line",col = {"minion","champion"}}
 	W = {ready = false, range = 900,radius = 225, speed = 2200, delay = 0.5, type = "circular" }
 	E = {ready = false, range = 750 }
 	R = {ready = false,range = 600}
@@ -899,6 +906,7 @@ end
 function Morgana:CastQ(unit)
 	if not ValidTarget(unit) then return end
 	if GPred then
+		
 		local qPred = GPred:GetPrediction(unit,myHero,Q,false,true)
 		if  qPred.HitChance >= 3 then
 			myHero:CastSpell(_Q,qPred.CastPosition.x,qPred.CastPosition.z)
@@ -2905,7 +2913,7 @@ end
 
 local function CheckEvade()
 	if GetGameTimer() < 120 and _G.GoSEvade == nil then
-		PrintChat("<font color=\"#ff8c00\">GoSEvade not found! Please enable the latest version of GoSEvade for Shield usage </font>")
+		PrintChat("<font color=\"#ff8c00\">Use Evade for Shield usage </font>")
 
 	end
 
