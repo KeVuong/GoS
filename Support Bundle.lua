@@ -30,11 +30,12 @@ local SupportHeroes = {
 
 if not SupportHeroes[myHero.charName] then return end
 
-local ver = "20170220000"
+local ver = "20170220001"
 
-
+require "DamageLib"
 require "GoSWalk"
-require "OpenPredict"-- jouzuna 
+
+
 
 local GPred = _G.gPred
 
