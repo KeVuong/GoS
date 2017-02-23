@@ -11,14 +11,12 @@ end
 
 local Ts = TargetSelector
 local Pred = Prediction
-local ENEMY = 1
-local JUNGLE = 2
-local ALLY = 3
-local Q = {Range = 850,Delay = 0.65, Radius = 40, Speed = math.huge,Type = "Circle"}
+local Q = {Range = 850,Delay = 0.6, Radius = 60, Speed = math.huge,Type = "Circle"}
 local W = {Range = 800,Delay = 0.5, Radius = 90, Speed = 1500,Type = "Circle"}
 local E = {Range = 700}
 local R = {Range = 825,Delay = 0.6, Radius = 80, Speed = math.huge, Angle = 40}
 
+local LastQ = 0
 
 class "Cassiopeia"
 
@@ -38,11 +36,10 @@ function Cassiopeia:__init()
 	OnActiveMode(function(...) self:OnActiveMode(...) end)
 	Callback.Add("Tick",function() self:Tick() end)
 	Callback.Add("Draw",function() self:Draw() end)
-	--OnUnkillableMinion(function(x) self:OnUnkillableMinion(x) end)
 end
 
 function Cassiopeia:LoadMenu()
-	self.Menu = MenuElement({type = MENU,id = "Addon"..myHero.charName,name = myHero.charName})
+	self.Menu = MenuElement({type = MENU,id = "ExtLib: "..myHero.charName,name = myHero.charName, leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Cassiopeia.png"})
 	
 	self.Menu:MenuElement({type = MENU,id = "Combo",name = "Combo Settings"})
 	self.Menu.Combo:MenuElement({id = "UseQ",name = "Use Q",value = true})
@@ -74,7 +71,6 @@ function Cassiopeia:LoadMenu()
 	self.Menu.Drawing:MenuElement({id = "DrawW",name = "Draw W Range",value = false})
 	self.Menu.Drawing:MenuElement({id = "DrawE",name = "Draw E Range",value = true})
 	self.Menu.Drawing:MenuElement({id = "DrawR",name = "Draw R Range",value = true})
-	--self.Menu.Drawing:MenuElement({id = "Target",name = "Mark Poisoned Enemies",value = true})
 end
 
 function Cassiopeia:IsPoisonedTarget(unit)
@@ -112,7 +108,11 @@ function Cassiopeia:GetDamage(spell,unit,poison)
 			return CalcMagicalDamage(myHero,unit, base)	
 		end
 	elseif spell == "Q"	 then
-		return getdmg("Q",unit,myHero)
+		local dmg = ({75, 120, 165, 210, 255})[myHero:GetSpellData(_Q).level] + 0.7 * myHero.ap
+		return CalcMagicalDamage(myHero,unit, dmg)	
+	elseif spell == "R"	 then
+		local dmg = ({150, 250, 350})[myHero:GetSpellData(_R).level] + 0.5 * myHero.ap
+		return CalcMagicalDamage(myHero,unit, dmg)	
 	end	
 end
 
@@ -120,25 +120,25 @@ function Cassiopeia:CastQ(target)
 	local CastPosition, Hitchance = Pred:GetPrediction(target,Q)
 	if Hitchance == "High" then
 		--LastPos = CastPosition
-		SpellCast:Add("Q",CastPosition,0.7)
+		SpellCast:CastSpell(HK_Q,CastPosition,0.7)
 	end
 end
 
 function Cassiopeia:CastW(target)
 	local CastPosition, Hitchance = Pred:GetPrediction(target,W)
 	if Hitchance == "High" and GetDistanceSqr(CastPosition,myHero.pos) > 400*400 then
-		SpellCast:Add("W",CastPosition)
+		SpellCast:CastSpell(HK_W,CastPosition)
 	end
 end
 
 function Cassiopeia:CastE(target)
-	SpellCast:AddTarget("E",target)
+	Control.CastSpell(HK_E,target)
 end
 
 function Cassiopeia:CastR(target)
 	local CastPosition, Hitchance = Pred:GetPrediction(target,R)
 	if Hitchance == "High" then
-		SpellCast:Add("R",CastPosition)
+		SpellCast:CastSpell(HK_R,CastPosition)
 	end
 end
 
@@ -155,9 +155,9 @@ end
 
 function Cassiopeia:IsKillable(target)
 	local totalDmg = 0
-	local qDmg = getdmg("Q",target)
+	local qDmg = self:GetDamage("Q",target)
 	local eDmg = self:GetDamage("E",target,true)
-	local rDmg  = getdmg("R",target,target)
+	local rDmg  = self:GetDamage("R",target)
 	if isReady(0) then
 		totalDmg  = totalDmg + qDmg
 	end
@@ -194,11 +194,11 @@ function Cassiopeia:Combo(OW,Minions)
 	local usee = self.Menu.Combo.UseE:Value()
 	local user = self.Menu.Combo.UseR:Value()
 	for i,enemy in pairs(self.Enemies) do
-		if ValidTarget(enemy,Q.Range) and getdmg("Q",enemy) > enemy.health and isReady(0) then
+		if ValidTarget(enemy,Q.Range) and self:GetDamage("Q",enemy) > enemy.health and isReady(0) then
 			self:CastQ(enemy)
 			return
 		end
-		if ValidTarget(enemy,E.Range) and isReady(2) and 2*self:GetDamage("E",enemy) > enemy.health and not isReady(0) then
+		if ValidTarget(enemy,E.Range) and isReady(2) and self:GetDamage("E",enemy) > enemy.health and not isReady(0) then
 			self:CastE(enemy)
 			return
 		end
@@ -214,7 +214,7 @@ function Cassiopeia:Combo(OW,Minions)
 	
 	local etarget = self:GetETarget()
 	if etarget then
-		if getdmg("AA",etarget,myHero)*3.5 < etarget.health then
+		if myHero.totalDamage < etarget.health then
 			OW.enableAttack = false
 		else
 			OW.enableAttack = true
@@ -227,10 +227,11 @@ function Cassiopeia:Combo(OW,Minions)
 	local qTarget = Ts:GetTarget(Q.Range)
 	if qTarget then
 		if isReady(0) and useq then
+			LastQ = os.clock()
 			self:CastQ(qTarget)
 			return
 		end
-		if not isReady(0) and isReady(1) and usew and not self:IsPoisonedTarget(qTarget) then
+		if not isReady(0) and isReady(1) and usew and not self:IsPoisonedTarget(qTarget) and os.clock() - LastQ > 1 then
 			self:CastW(qTarget)
 			return
 		end
@@ -244,13 +245,13 @@ function Cassiopeia:Harass(OW,Minions)
 	local useq = self.Menu.Harass.UseQ:Value()
 	local usee = self.Menu.Harass.UseE:Value()
 	if isReady(2) and elasthit then
-	for i,minion in pairs(Minions[ENEMY]) do
+	for i,minion in pairs(Minions[1]) do
 		if ValidTarget(minion,E.Range) then
 			if self:IsPoisonedTarget(minion) then
 				local distance =  GetDistance(myHero.pos,minion.pos)
 				local time = 0.025 + distance/2500
 				if distance < E.Range and OW:GetHealthPrediction(minion,time,Minions[3]) < self:GetDamage("E",minion,true) then
-					SpellCast:AddTarget("E",minion)
+					Control.CastSpell(HK_E,minion)
 					return
 				end
 			end
@@ -274,7 +275,7 @@ function Cassiopeia:LaneClear(OW,Minions)
 	
 	local minions = {}
 	local minions2 = {}
-	for i,minion in pairs(Minions[ENEMY]) do
+	for i,minion in pairs(Minions[1]) do
 		if ValidTarget(minion,Q.Range + Q.Radius) then
 			table.insert(minions,minion)	
 			if self:IsPoisonedTarget(minion) then
@@ -288,7 +289,7 @@ function Cassiopeia:LaneClear(OW,Minions)
 			local distance =  GetDistance(myHero.pos,minion.pos)
 			local time = 0.025 + distance/2500 
 			if distance < E.Range and OW:GetHealthPrediction(minion,time,Minions[3]) < self:GetDamage("E",minion,true) then
-				SpellCast:AddTarget("E",minion)
+				Control.CastSpell(HK_E,minion)
 				return
 			end
 		end
@@ -300,7 +301,7 @@ function Cassiopeia:LaneClear(OW,Minions)
 		end
 		local bestPos, bestHit = GetBestCircularFarmPosition(Q.Range,Q.Radius + 40, minions)
 		if bestHit > 0 then
-			SpellCast:Add("Q",bestPos,0.6)
+			SpellCast:CastSpell(HK_Q,bestPos,0.6)
 		end
 	end	
 	
@@ -308,7 +309,7 @@ end
 
 function Cassiopeia:JungleClear(OW,Minions)
 	local mobs = {}
-	for i, minion in pairs(Minions[JUNGLE]) do
+	for i, minion in pairs(Minions[2]) do
 		if ValidTarget(minion,Q.Range) then
 			table.insert(mobs,minion)
 		end	
@@ -321,7 +322,7 @@ function Cassiopeia:JungleClear(OW,Minions)
 			return
 		end
 		if isReady(0) then
-			SpellCast:Add("Q", mob.pos,0.6)
+			SpellCast:CastSpell(HK_Q, mob.pos,0.6)
 		end
 	end
 end
@@ -331,13 +332,13 @@ function Cassiopeia:LastHit(OW,Minions)
 	local qlasthit = self.Menu.LastHit.UseQ:Value()
 	
 	if isReady(2) and elasthit then
-	for i,minion in pairs(Minions[ENEMY]) do
+	for i,minion in pairs(Minions[1]) do
 		if ValidTarget(minion,E.Range) then
 			if self:IsPoisonedTarget(minion) then
 				local distance =  GetDistance(myHero.pos,minion.pos)
 				local time = 0.025 + distance/2500
 				if distance < E.Range and OW:GetHealthPrediction(minion,time,Minions[3]) < self:GetDamage("E",minion,true) then
-					SpellCast:AddTarget("E",minion)
+					Control.CastSpell(HK_E,minion)
 					return
 				end
 			end
@@ -346,23 +347,14 @@ function Cassiopeia:LastHit(OW,Minions)
 	end
 	
 	if isReady(0) and qlasthit then
-		for i,minion in pairs(Minions[ENEMY]) do
-			if ValidTarget(minion,Q.Range) and getdmg("Q",minion) > minion.health and minion.health > myHero.totalDamage then
-				SpellCast:Add("Q", minion.pos,0.6)
+		for i,minion in pairs(Minions[1]) do
+			if ValidTarget(minion,Q.Range) and self:GetDamage("Q",minion) > minion.health and minion.health > myHero.totalDamage then
+				SpellCast:CastSpell(HK_Q, minion.pos,0.6)
 			end
 		end		
 	end
 end
 
-function Cassiopeia:OnUnkillableMinion(minion)
-	if not isReady(2) then return end
-	local distance =  GetDistance(myHero.pos,minion.pos)
-	local time = 0.025 + distance/2500 
-	if distance < E.Range and OW:GetHealthPrediction(minion,time,Minions[3]) < self:GetDamage("E",minion) then
-		SpellCast:AddTarget("E",minion)
-		return
-	end
-end
 
 function Cassiopeia:Tick()
 	if isReady(3) then
@@ -400,7 +392,7 @@ function Cassiopeia:Draw()
 		Draw.Circle(Vector(myHero.pos),E.Range,1,ecolor)
 	end
 	if LastPos then 
-		Draw.Circle(LastPos,80,2,Draw.Color(255, 228, 196, 255))
+		--Draw.Circle(LastPos,80,2,Draw.Color(255, 228, 196, 255))
 	end
 end
 
