@@ -100,7 +100,7 @@ end
 
 function Cassiopeia:GetDamage(spell,unit,poison)
 	if spell == "E" then
-		local base = 48 + myHero.levelData.lvl*4
+		local base = 48 + myHero.levelData.lvl*4 + myHero.ap*0.1 
 		if poison or self:IsPoisonedTarget(unit)  then	
 			local bonus = ({10, 40, 70, 100, 130})[myHero:GetSpellData(_E).level] + myHero.ap*0.35
 			return CalcMagicalDamage(myHero,unit, base + bonus)	
@@ -132,7 +132,8 @@ function Cassiopeia:CastW(target)
 end
 
 function Cassiopeia:CastE(target)
-	Control.CastSpell(HK_E,target)
+	--Control.CastSpell(HK_E,target)
+	SpellCast:CastSpell(HK_E,target.pos)
 end
 
 function Cassiopeia:CastR(target)
@@ -251,7 +252,7 @@ function Cassiopeia:Harass(OW,Minions)
 				local distance =  GetDistance(myHero.pos,minion.pos)
 				local time = 0.025 + distance/2500
 				if distance < E.Range and OW:GetHealthPrediction(minion,time,Minions[3]) < self:GetDamage("E",minion,true) then
-					Control.CastSpell(HK_E,minion)
+					self:CastE(minion)	
 					return
 				end
 			end
@@ -270,37 +271,31 @@ function Cassiopeia:Harass(OW,Minions)
 	end
 end
 
---2500
+
 function Cassiopeia:LaneClear(OW,Minions)
 	
 	local minions = {}
 	local minions2 = {}
+	local q = true
 	for i,minion in pairs(Minions[1]) do
+		local distance =  GetDistance(myHero.pos,minion.pos)
+		if isReady(2) and ValidTarget(minion,E.Range) and self:GetDamage("E",minion) > OW:GetHealthPrediction(minion,0.025 + distance/2500,Minions[3]) then
+			q = false
+			self:CastE(minion)
+		end
 		if ValidTarget(minion,Q.Range + Q.Radius) then
-			table.insert(minions,minion)	
-			if self:IsPoisonedTarget(minion) then
-				table.insert(minions2,minion)
-			end
+			minions[#minions+1] = minion
 		end
 	end
-	if #minions2 > 0 then
-		if not isReady(3) then return end
-		for i,minion in pairs(minions2) do
-			local distance =  GetDistance(myHero.pos,minion.pos)
-			local time = 0.025 + distance/2500 
-			if distance < E.Range and OW:GetHealthPrediction(minion,time,Minions[3]) < self:GetDamage("E",minion,true) then
-				Control.CastSpell(HK_E,minion)
-				return
-			end
-		end
-	elseif #minions > 0 then
+	if #minions > 0 then
 		if myHero.mana/myHero.maxMana < self.Menu.LaneClear.MinMana:Value()/100 then return end
 		if not isReady(0) then return end
 		if #minions == 1 and minions[1].health < myHero.totalDamage then
+			q = false
 			return
 		end
 		local bestPos, bestHit = GetBestCircularFarmPosition(Q.Range,Q.Radius + 40, minions)
-		if bestHit > 0 then
+		if bestHit > 0 and q then
 			SpellCast:CastSpell(HK_Q,bestPos,0.6)
 		end
 	end	
