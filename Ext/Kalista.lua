@@ -9,6 +9,9 @@ local E = {Range = 950}
 local R = {Range = 1100}
 local EDamages = {}
 local Oathsworn = nil
+local RES = Game.Resolution()
+
+
 -- Menu
 local KalistaMenu = MenuElement({type = MENU, id = "KalistaMenu", name = "Kalista", leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Kalista.png"})
 --[[Key]]
@@ -27,16 +30,15 @@ KalistaMenu.Harass:MenuElement({id = "UseE", name = "Use E On Killable Minion", 
 KalistaMenu.Harass:MenuElement({id = "Mana", name = "Min Mana (%)", value = 60,min = 0, max = 100, step = 1})
 
 KalistaMenu:MenuElement({type = MENU, id = "Clear", name = "Clear Settings"})
-KalistaMenu.Clear:MenuElement({id = "UseEBaron", name = "Use E On Baron", value = true})
-KalistaMenu.Clear:MenuElement({id = "UseEDragon", name = "Use E On Dragon", value = true})
-KalistaMenu.Clear:MenuElement({id = "UseERed", name = "Use E On Red", value = true})
-KalistaMenu.Clear:MenuElement({id = "UseESiege", name = "Use E On Siege", value = false})
+KalistaMenu.Clear:MenuElement({id = "EMob", name = "Use E On Jungle Mobs", key = string.byte("T"),toggle = true})
+KalistaMenu.Clear:MenuElement({id = "ESiege", name = "Use E On Siege", value = false})
+KalistaMenu.Clear:MenuElement({id = "EKillMinion", name = "Use E kills X minions", value = 5,min = 1, max = 10, step = 1})
 
 KalistaMenu:MenuElement({type = MENU, id = "Misc", name = "Misc Settings"})
 KalistaMenu.Misc:MenuElement({id = "SaveAlly", name = "Use Ult to Save Ally", value = true})
 KalistaMenu.Misc:MenuElement({id = "AllyHP", name = "Min Ally Health %", value = 20,min = 0, max = 100, step = 1})
-KalistaMenu.Misc:MenuElement({id = "EBeforeDeadth", name = "E Before Deadth", value = true})
-KalistaMenu.Misc:MenuElement({id = "HPToEBeforeDeadth", name = "Min Health % to use", value = 10,min = 0, max = 100, step = 1})
+KalistaMenu.Misc:MenuElement({id = "EBeforeDeath", name = "E Before Death", value = true})
+KalistaMenu.Misc:MenuElement({id = "HPToEBeforeDeath", name = "Min Health % to use", value = 5,min = 0, max = 100, step = 1})
 
 KalistaMenu:MenuElement({type = MENU, id = "Drawing", name = "Draw Settings"})
 KalistaMenu.Drawing:MenuElement({id = "DrawQ", name = "Draw Q Range", value = true})
@@ -50,6 +52,7 @@ function isReady(slot)
 end
 
 function isValidTarget(obj,range)
+	range = range and range or math.huge
 	return obj ~= nil and obj.valid and obj.visible and not obj.dead and obj.isTargetable and obj.distance <= range
 end
 
@@ -103,12 +106,16 @@ end
 
 function AutoE()
 	local hasE = false
+	-- e KS
 	for i = 1, Game.HeroCount() do
 		local hero = Game.Hero(i)
 		if hero.isEnemy and isValidTarget(hero,E.Range) then
 			local stack = GetEStacks(hero)
 			if stack > 0 then
 				hasE = true
+				EDamages[hero.networkID] = {Unit = hero, Damage = GetEDamage(hero,stack)}
+			else
+				EDamages[hero.networkID]  = nil
 			end
 			if stack > 0 and GetEDamage(hero,stack) > hero.health + hero.shieldAD then
 				Control.CastSpell(HK_E)
@@ -117,16 +124,21 @@ function AutoE()
 		end
 	end	
 	if not hasE then return end
+	-- e kills minions to harass
 	for i = 1, Game.MinionCount() do	 
 		local minion = Game.Minion(i)
 		if minion.isEnemy and isValidTarget(minion,E.Range) then
 			local stack = GetEStacks(minion)
-			if stack > 0 and GetEDamage(minion,stack) > minion.health + minion.shieldAD and CountEnemy(myHero.pos,myHero.range+myHero.boundingRadius + 150) == 0 then
+			if stack > 0 and GetEDamage(minion,stack) > minion.health + minion.shieldAD then-- and CountEnemy(myHero.pos,myHero.range+myHero.boundingRadius + 150) == 0 then
 				Control.CastSpell(HK_E)
 				return
 			end
 		end
 	end	
+	--e before death, 2 enemies around
+	if KalistaMenu.Misc.EBeforeDeath:Value() and myHero.health/myHero.maxHealth < KalistaMenu.Misc.HPToEBeforeDeath:Value()/100 and CountEnemy(myHero.pos,550) > 1 then
+		Control.CastSpell(HK_E)
+	end
 end
 
 function GetEStacks(unit)
@@ -163,21 +175,36 @@ Callback.Add('Tick',function()
 		end
 	end
 	
-	if KalistaMenu.Key.ClearKey:Value() and isReady(2) then
+	if isReady(2) then
+		-- E kill mob
+		local eminions = 0
 		for i = 1, Game.MinionCount() do	 
 			local minion = Game.Minion(i)
 			if isValidTarget(minion,E.Range) and not minion.isAlly then
-				if minion.charName:find("Baron") or minion.charName:find("Dragon") or minion.charName:find("Red") or minion.charName:find("Siege") then
-					local stacks  = GetEStacks(minion)
-					if stacks > 0 and GetEDamage(minion,stacks) > minion.health then
+				local stacks  = GetEStacks(minion)
+				local eDmg = 0
+				if stacks > 0 then
+					eDmg = GetEDamage(minion,stacks)
+					EDamages[minion.networkID] = {Unit = minion,Damage = eDmg}
+				elseif EDamages[minion.networkID] then
+					EDamages[minion.networkID] = nil
+				end
+				if stacks > 0 and eDmg > minion.health then
+					if (minion.team == 300 and KalistaMenu.Clear.EMob:Value()) or (minion.charName:find("Siege") and KalistaMenu.Clear.ESiege:Value())then	
 						Control.CastSpell(HK_E)
+					else
+						eminions = eminions + 1	
 					end
 				end
+				
 			end	
+		end
+		if KalistaMenu.Key.ClearKey:Value() and eminions >= KalistaMenu.Clear.EKillMinion:Value() then
+			Control.CastSpell(HK_E)
 		end
 	end
 	
-	if isReady(3) and Oathsworn then
+	if isReady(3) and Oathsworn and KalistaMenu.Misc.SaveAlly:Value() then
 		if isValidTarget(Oathsworn,R.Range) then
 			if Oathsworn.health/Oathsworn.maxHealth <= KalistaMenu.Misc.AllyHP:Value()/100 and CountEnemy(Oathsworn.pos,500) > 0 then
 				Control.CastSpell(HK_R)
@@ -204,5 +231,22 @@ Callback.Add("Draw", function()
 		local wcolor = isReady(1) and  Draw.Color(189, 183, 107, 255) or Draw.Color(240,255,0,0)
 		Draw.CircleMinimap(Vector(myHero.pos),W.Range,1,wcolor)
 	end
-	
+	if KalistaMenu.Drawing.DrawEDmg:Value() and isReady(2) then
+		for i,info in pairs(EDamages) do
+			local unit = info.Unit
+			if unit and isValidTarget(unit) then
+				local percentage = tostring(0.1*math.floor(1000*info.Damage/(unit.health))).."%"
+				Draw.Text(percentage,20,unit.pos:To2D())
+			elseif unit then	
+				EDamages[unit.networkID] = nil
+			end
+		end
+	end
+	local text = KalistaMenu.Clear.EMob:Value() and "ON" or "OFF"
+	local color = KalistaMenu.Clear.EMob:Value() and Draw.Color(150, 0, 255, 0) or Draw.Color(150,255,0,0)
+	text = "KS Mob: "..text
+	local rec = Draw.FontRect(text,20)
+	Draw.Text(text,20,RES.x/2 - rec.x,RES.y*0.75,color)
+	text = "E Kills "..tostring(KalistaMenu.Clear.EKillMinion:Value()).." Minions"
+	Draw.Text(text,20,RES.x/2 - rec.x,RES.y*0.75 + rec.y,Draw.Color(150, 0, 255, 0))
 end)
