@@ -48,7 +48,7 @@ KalistaMenu.Drawing:MenuElement({id = "DrawR", name = "Draw R Range", value = tr
 KalistaMenu.Drawing:MenuElement({id = "DrawEDmg", name = "Draw E Dmg", value = true})
 
 function isReady(slot)
-	return myHero:GetSpellData(slot).level > 0 and myHero:GetSpellData(slot).currentCd == 0 and (myHero.mana >= myHero:GetSpellData(slot).mana)
+	return Game.CanUseSpell(slot) == 0
 end
 
 function isValidTarget(obj,range)
@@ -129,7 +129,7 @@ function AutoE()
 		local minion = Game.Minion(i)
 		if minion.isEnemy and isValidTarget(minion,E.Range) then
 			local stack = GetEStacks(minion)
-			if stack > 0 and GetEDamage(minion,stack) > minion.health + minion.shieldAD then-- and CountEnemy(myHero.pos,myHero.range+myHero.boundingRadius + 150) == 0 then
+			if stack > 0 and GetEDamage(minion,stack) > minion.health + minion.shieldAD and CountEnemy(myHero.pos,myHero.range+myHero.boundingRadius + 150) == 0 then
 				Control.CastSpell(HK_E)
 				return
 			end
@@ -165,7 +165,7 @@ Callback.Add('Tick',function()
 	if isReady(2) then
 		AutoE()
 	end
-	if KalistaMenu.Key.ComboKey:Value() or (KalistaMenu.Key.HarassKey:Value() and myHero.mana/myHero.maxMana > KalistaMenu.Harass.Mana:Value()/100)	then
+	if (KalistaMenu.Key.ComboKey:Value() and KalistaMenu.Combo.UseQ:Value()) or (KalistaMenu.Harass.UseQ:Value() and KalistaMenu.Key.HarassKey:Value() and myHero.mana/myHero.maxMana > KalistaMenu.Harass.Mana:Value()/100)	then
 		if isReady(_Q) then
 			local qTarget = GetUglyTarget(Q.Range)
 			if qTarget and myHero.attackData.state ~= 2 and qTarget:GetCollision(Q.Radius,Q.Speed,Q.Delay) == 0 then
