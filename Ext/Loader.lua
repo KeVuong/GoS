@@ -1,3 +1,4 @@
+--[[
 local path = SCRIPT_PATH.."ExtLib.lua"
 
 if FileExist(path) then
@@ -6,3 +7,4 @@ if FileExist(path) then
 else
 	print("ExtLib Not Found")
 end	
+]]
