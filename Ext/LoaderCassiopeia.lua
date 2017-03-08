@@ -1,27 +1,56 @@
 if myHero.charName ~= "Cassiopeia" then return end
+--print("hello")
 
-local path = SCRIPT_PATH.."ExtLib.lua"
 
-if FileExist(path) then
-	_G.Enable_Ext_Lib = true
-	loadfile(path)()
-else
-	print("ExtLib Not Found. Please update it")
-end	
 
-local Ts = TargetSelector
-local Pred = Prediction
 local Q = {Range = 850,Delay = 0.6, Radius = 60, Speed = math.huge,Type = "Circle"}
-local W = {Range = 800,Delay = 0.5, Radius = 90, Speed = 1500,Type = "Circle"}
+local W = {Range = 800,Delay = 0.5, Radius = 90, Speed = 3000,Type = "Circle"}
 local E = {Range = 700}
 local R = {Range = 825,Delay = 0.6, Radius = 80, Speed = math.huge, Angle = 40}
 
 local LastQ = 0
 
+local function isReady(slot)
+	return Game.CanUseSpell(slot) == READY
+end
+
+local function CalcMagicalDamage(source, target, amount)
+  local mr = target.magicResist
+  local value = 100 / (100 + (mr * source.magicPenPercent) - source.magicPen)
+
+  if mr < 0 then
+    value = 2 - 100 / (100 - mr)
+  elseif (mr * source.magicPenPercent) - source.magicPen < 0 then
+    value = 1
+  end
+  return value * amount
+end
+local function GetDistanceSqr(p1, p2)
+    assert(p1, "GetDistance: invalid argument: cannot calculate distance to "..type(p1))
+    p2 = p2 or myHero.pos
+    return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
+end
+
+local function GetDistance(p1, p2)
+    return math.sqrt(GetDistanceSqr(p1, p2))
+end
+
+local function ValidTarget(unit,range,from)
+	from = from or myHero.pos
+	range = range or math.huge
+	return unit and unit.valid and not unit.dead and unit.visible and unit.isTargetable and GetDistanceSqr(unit.pos,from) <= range*range
+end
+
+
+
 class "Cassiopeia"
 
 function Cassiopeia:__init()
-	Ts:PresetMode("LESS_CAST")
+	self.Ts = ExtLib.TargetSelector
+	self.Pred = ExtLib.Prediction
+	if not self.Pred then print("ExtLib is outdated. Please update script") end
+	self.Ts:PresetMode("LESS_CAST")
+	
 	self.Allies = {}
 	self.Enemies = {}
 	for i = 1,Game.HeroCount() do
@@ -33,6 +62,7 @@ function Cassiopeia:__init()
 		end	
 	end	
 	self:LoadMenu()
+	
 	OnActiveMode(function(...) self:OnActiveMode(...) end)
 	Callback.Add("Tick",function() self:Tick() end)
 	Callback.Add("Draw",function() self:Draw() end)
@@ -56,7 +86,7 @@ function Cassiopeia:LoadMenu()
 	self.Menu.Harass:MenuElement({id = "MinMana",name = "Don't use spells if mana is lower than",value = 70,min = 0,max = 100, step = 1})
 	
 	self.Menu:MenuElement({type = MENU,id = "LastHit",name = "LastHit Settings"})
-	self.Menu.LastHit:MenuElement({id = "UseQ",name = "Use Q",value = true})
+	self.Menu.LastHit:MenuElement({id = "UseQ",name = "Use Q",value = false})
 	self.Menu.LastHit:MenuElement({id = "UseE",name = "Use E",value = true})
 	
 	self.Menu:MenuElement({type = MENU,id = "LaneClear",name = "LaneClear Settings"})
@@ -87,7 +117,7 @@ function Cassiopeia:GetETarget()
 	local target = nil
 	local N = 1000
 	for i, enemy in pairs(self.Enemies) do
-		if ValidTarget(enemy,E.Range) and not IsInvulnerableTarget(enemy) and self:IsPoisonedTarget(enemy) then
+		if ValidTarget(enemy,E.Range) and not self:IsInvulnerableTarget(enemy) and self:IsPoisonedTarget(enemy) then
 			local tokill = enemy.health/CalcMagicalDamage(myHero,enemy,100)
 			if tokill < N then
 				N = tokill
@@ -117,7 +147,7 @@ function Cassiopeia:GetDamage(spell,unit,poison)
 end
 
 function Cassiopeia:CastQ(target)
-	local CastPosition, Hitchance = Pred:GetPrediction(target,Q)
+	local CastPosition, Hitchance = self.Pred:GetPrediction(target,Q)
 	if Hitchance == "High" then
 		--LastPos = CastPosition
 		SpellCast:CastSpell(HK_Q,CastPosition,0.7)
@@ -125,7 +155,7 @@ function Cassiopeia:CastQ(target)
 end
 
 function Cassiopeia:CastW(target)
-	local CastPosition, Hitchance = Pred:GetPrediction(target,W)
+	local CastPosition, Hitchance = self.Pred:GetPrediction(target,W)
 	if Hitchance == "High" and GetDistanceSqr(CastPosition,myHero.pos) > 400*400 then
 		SpellCast:CastSpell(HK_W,CastPosition)
 	end
@@ -137,7 +167,7 @@ function Cassiopeia:CastE(target)
 end
 
 function Cassiopeia:CastR(target)
-	local CastPosition, Hitchance = Pred:GetPrediction(target,R)
+	local CastPosition, Hitchance = self.Pred:GetPrediction(target,R)
 	if Hitchance == "High" then
 		SpellCast:CastSpell(HK_R,CastPosition)
 	end
@@ -205,7 +235,7 @@ function Cassiopeia:Combo(OW,Minions)
 		end
 	end
 	if user and isReady(3) then
-		local rTarget = Ts:GetTarget(650)
+		local rTarget = self.Ts:GetTarget(650)
 		if rTarget and not self:IsKillable(rTarget) and self:CanR(rTarget) then
 			
 			self:CastR(rTarget)
@@ -225,7 +255,7 @@ function Cassiopeia:Combo(OW,Minions)
 			return
 		end	
 	end	
-	local qTarget = Ts:GetTarget(Q.Range)
+	local qTarget = self.Ts:GetTarget(Q.Range)
 	if qTarget then
 		if isReady(0) and useq then
 			LastQ = os.clock()
@@ -265,7 +295,7 @@ function Cassiopeia:Harass(OW,Minions)
 		self:CastE(etarget)	
 		return
 	end
-	local qTarget = Ts:GetTarget(Q.Range)
+	local qTarget = self.Ts:GetTarget(Q.Range)
 	if qTarget and isReady(0) and useq and not self:IsPoisonedTarget(qTarget) then
 		self:CastQ(qTarget)
 	end
@@ -294,7 +324,7 @@ function Cassiopeia:LaneClear(OW,Minions)
 			q = false
 			return
 		end
-		local bestPos, bestHit = GetBestCircularFarmPosition(Q.Range,Q.Radius + 40, minions)
+		local bestPos, bestHit = self:GetBestCircularFarmPosition(Q.Range,Q.Radius + 40, minions)
 		if bestHit > 0 and q then
 			SpellCast:CastSpell(HK_Q,bestPos,0.6)
 		end
@@ -341,7 +371,7 @@ function Cassiopeia:LastHit(OW,Minions)
 	end
 	end
 	
-	if isReady(0) and qlasthit then
+	if isReady(0) and qlasthit and not isReady(2) then
 		for i,minion in pairs(Minions[1]) do
 			if ValidTarget(minion,Q.Range) and self:GetDamage("Q",minion) > minion.health and minion.health > myHero.totalDamage then
 				SpellCast:CastSpell(HK_Q, minion.pos,0.6)
@@ -352,6 +382,7 @@ end
 
 
 function Cassiopeia:Tick()
+	
 	if isReady(3) then
 		local enemies = {}
 		for i,enemy in pairs(self.Enemies) do
@@ -364,12 +395,64 @@ function Cassiopeia:Tick()
 			end
 		end
 		if #enemies >= 2 then
-			local rTarget = Ts:GetTarget(650)--need better logic
+			local rTarget = self.Ts:GetTarget(650)--need better logic
 			if rTarget then
 				self:CastR(rTarget)
 			end
 		end
 	end
+end
+
+function Cassiopeia:IsInvulnerableTarget(unit)
+	
+	local Buffs = {
+	["UndyingRage"] = true,
+    ["JudicatorIntervention"] = true,
+    ["VladimirSanguinePool"] = true,--isTargetable
+    ["ChronoRevive"] = true,
+    ["ChronoShift"] = true,
+    ["zhonyasringshield"] = true,
+    ["lissandrarself"] = true,
+}
+	for i = 0, unit.buffCount do
+		local buff = unit:GetBuff(i)
+		if buff and buff.name and buff.count > 0 and buff.expireTime > Game.Timer() and (Buffs[buff.name] or (buff.name == "kindredrnodeathbuff" and GetPercentHP(unit) < 10) or (buff.name == "UndyingRage" and unit.health < 10) ) then
+			return true
+		end
+	end
+	return false
+end
+
+function Cassiopeia:GetBestCircularFarmPosition(range, radius, objects)
+
+    local BestPos 
+    local BestHit = 0
+    for i, object in pairs(objects) do
+        local hit = self:CountObjectsNearPos(object.pos, range, radius, objects)
+        if hit > BestHit then
+            BestHit = hit
+            BestPos = object.pos
+            if BestHit == #objects then
+               break
+            end
+         end
+    end
+
+    return BestPos, BestHit
+
+end
+
+function Cassiopeia:CountObjectsNearPos(pos, range, radius, objects)
+
+    local n = 0
+    for i, object in pairs(objects) do
+        if GetDistanceSqr(pos, object.pos) <= radius * radius then
+            n = n + 1
+        end
+    end
+
+    return n
+
 end
 
 function Cassiopeia:Draw()
@@ -391,6 +474,6 @@ function Cassiopeia:Draw()
 	end
 end
 
-Cassiopeia()
+Callback.Add("Load",function() Cassiopeia() end)
 
 
