@@ -10,7 +10,8 @@ local R = {Range = 1100}
 local EDamages = {}
 local Oathsworn = nil
 local RES = Game.Resolution()
-
+local SentinelPos = {Vector(5007.123535,0, 10471.446289),Vector(9866.148438,0, 4414.014160)}
+local LastSentinels = {0,0}
 
 -- Menu
 local KalistaMenu = MenuElement({type = MENU, id = "KalistaMenu", name = "Kalista", leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Kalista.png"})
@@ -34,7 +35,15 @@ KalistaMenu.Clear:MenuElement({id = "EMob", name = "Use E On Jungle Mobs", key =
 KalistaMenu.Clear:MenuElement({id = "ESiege", name = "Use E On Siege", value = false})
 KalistaMenu.Clear:MenuElement({id = "EKillMinion", name = "Use E kills X minions", value = 5,min = 1, max = 10, step = 1})
 
+KalistaMenu:MenuElement({type = MENU, id = "Item", name = "Item Settings"})
+KalistaMenu.Item:MenuElement({type = MENU, id = "Botrk", name = "Blade of The Ruin King"})
+KalistaMenu.Item.Botrk:MenuElement({id = "Enable", name = "Enable Usage", value = true})
+KalistaMenu.Item.Botrk:MenuElement({id = "BotrkHPPercent", name = "Min Health %", value = 80,min = 0, max = 101, step = 1})
+KalistaMenu.Item:MenuElement({type = MENU, id = "Qss", name = "Qss/Merc"})
+KalistaMenu.Item.Qss:MenuElement({id = "Enable", name = "Enable Usage", value = true})
+
 KalistaMenu:MenuElement({type = MENU, id = "Misc", name = "Misc Settings"})
+KalistaMenu.Misc:MenuElement({id = "AutoSentinel", name = "Send Sentinel to Baron/Dragon", key = string.byte("M")})
 KalistaMenu.Misc:MenuElement({id = "SaveAlly", name = "Use Ult to Save Ally", value = true})
 KalistaMenu.Misc:MenuElement({id = "AllyHP", name = "Min Ally Health %", value = 20,min = 0, max = 100, step = 1})
 KalistaMenu.Misc:MenuElement({id = "EBeforeDeath", name = "E Before Death", value = true})
@@ -66,7 +75,7 @@ function HasBuff(unit, buffname)
   return false
 end
 
-function GetUglyTarget(range)
+function GetTarget(range)
 	local result = nil
 	local N = 0
 	for i = 1,Game.HeroCount()  do
@@ -93,6 +102,47 @@ function CountEnemy(pos,range)
 	return N	
 end
 
+local function VectorPointProjectionOnLineSegment(v1, v2, v)
+    local cx, cy, ax, ay, bx, by = v.x, (v.z or v.y), v1.x, (v1.z or v1.y), v2.x, (v2.z or v2.y)
+    local rL = ((cx - ax) * (bx - ax) + (cy - ay) * (by - ay)) / ((bx - ax) ^ 2 + (by - ay) ^ 2)
+    local pointLine = { x = ax + rL * (bx - ax), y = ay + rL * (by - ay) }
+    local rS = rL < 0 and 0 or (rL > 1 and 1 or rL)
+    local isOnSegment = rS == rL
+    local pointSegment = isOnSegment and pointLine or { x = ax + rS * (bx - ax), y = ay + rS * (by - ay) }
+    return pointSegment, pointLine, isOnSegment
+end
+
+function CalcPhysicalDamage2(source, target, amount)
+	local ArmorPenPercent = source.armorPenPercent
+	local ArmorPenFlat = source.armorPen * (0.6 + (0.4 * (target.levelData.lvl / 18))) 
+	local BonusArmorPen = source.bonusArmorPenPercent
+	
+	if source.type == Obj_AI_Minion then
+		ArmorPenPercent = 1
+		ArmorPenFlat = 0
+		BonusArmorPen = 1
+	elseif source.type == Obj_AI_Turret then
+		ArmorPenFlat = 0
+		BonusArmorPen = 1
+		if source.charName:find("3") or source.charName:find("4") then
+			ArmorPenPercent = 0.25
+		else
+			ArmorPenPercent = 0.7
+		end	
+	end
+
+	local armor = target.armor
+	local bonusArmor = target.bonusArmor
+	local value = 100 / (100 + (armor * ArmorPenPercent) - (bonusArmor * (1 - BonusArmorPen)) - ArmorPenFlat)
+
+	if armor < 0 then
+		value = 2 - 100 / (100 - armor)
+	elseif (armor * ArmorPenPercent) - (bonusArmor * (1 - BonusArmorPen)) - ArmorPenFlat < 0 then
+		value = 1
+	end
+	return value * amount
+end
+
 function FindTheOath()
 	if Oathsworn then return end
 	for i = 1, Game.HeroCount() do
@@ -117,7 +167,7 @@ function AutoE()
 			else
 				EDamages[hero.networkID]  = nil
 			end
-			if stack > 0 and GetEDamage(hero,stack) > hero.health + hero.shieldAD then
+			if stack > 0 and GetEDamage(hero,stack) > hero.health + hero.shieldAD + hero.hpRegen*1.5 then
 				Control.CastSpell(HK_E)
 				return
 			end
@@ -156,21 +206,72 @@ function GetEDamage(unit,stacks)
 	local level = myHero:GetSpellData(_E).level
 	local basedmg = ({20, 30, 40, 50, 60})[level] + 0.6* (myHero.totalDamage)
 	local stacksdmg = (stacks - 1)*(({10, 14, 19, 25, 32})[level]+({0.2, 0.225, 0.25, 0.275, 0.3})[level] * myHero.totalDamage)
-	return CalcPhysicalDamage(myHero,unit,basedmg + stacksdmg)
+	return CalcPhysicalDamage2(myHero,unit,basedmg + stacksdmg)
 end
 
+function GetQDamage(unit)
+	local basedmg = ({10, 70, 130, 190, 250})[myHero:GetSpellData(_Q).level] + source.totalDamage
+	return CalcPhysicalDamage2(myHero,unit,basedmg)
+end
+
+function UseItems()
+	local items = {}
+	for slot = ITEM_1,ITEM_6 do
+		local id = myHero:GetItemData(slot).itemID 
+		if id > 0 then
+			items[id] = slot
+		end
+	end
+	local botrk = items[3153] or items[3144]
+	if (botrk and Game.CanUseSpell(botrk) == 0) and KalistaMenu.Item.Botrk.Enable:Value() and myHero.health/myHero.maxHealth < KalistaMenu.Item.BotrkHPPercent.Enable:Value()/100 then
+		local target = GetTarget(550)
+		if target then
+			Control.CastSpell(botrk,target)
+		end
+	end
+	
+	local qss = items[3140] or items[3139]
+	if qss and Game.CanUseSpell(qss) == 0 and KalistaMenu.Item.Qss.Enable:Value() then
+		local buffs = {}
+		for i = 0, myHero.buffCount do
+			local buff = myHero:GetBuff(i)
+			if buff and buff.count > 0 then
+				buffs[buff.type] = true
+			end
+		end
+		if buffs[5] or buffs[21] or buffs[22] or buffs[11] or buffs[8] or buffs[25] or buffs[31] then
+			Control.CastSpell(qss)
+		end
+	end
+end
 
 Callback.Add('Tick',function() 
 	FindTheOath()
 	if isReady(2) then
 		AutoE()
 	end
+	if KalistaMenu.Key.ComboKey:Value() and myHero.attackData.state ~= 2 then
+		UseItems()
+	end
 	if (KalistaMenu.Key.ComboKey:Value() and KalistaMenu.Combo.UseQ:Value()) or (KalistaMenu.Harass.UseQ:Value() and KalistaMenu.Key.HarassKey:Value() and myHero.mana/myHero.maxMana > KalistaMenu.Harass.Mana:Value()/100)	then
 		if isReady(_Q) then
-			local qTarget = GetUglyTarget(Q.Range)
-			if qTarget and myHero.attackData.state ~= 2 and qTarget:GetCollision(Q.Radius,Q.Speed,Q.Delay) == 0 then
+			local qTarget = GetTarget(Q.Range)
+			if qTarget then
 				local pos = qTarget:GetPrediction(Q.Speed,Q.Delay)
-				Control.CastSpell(HK_Q,pos)
+				local collision = false
+				for i = 1, Game.MinionCount() do	 
+					local minion = Game.Minion(i)  
+					if minion.isEnemy and isValidTarget(minion) and minion.pos:DistanceTo(myHero.pos) < Q.Range + 100 then
+						local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(myHero.pos,pos,minion.pos)
+						if isOnSegment and (minion.pos.x - pointSegment.x)^2 + (minion.pos.z - pointSegment.y)^2 < (Q.Radius + minion.boundingRadius + 15) * (Q.Radius + minion.boundingRadius + 15) and minion.health > GetQDamage(minion) then
+							collision = true
+							break
+						end
+					end
+				end
+				if not collision	and myHero.attackData.state ~= 2 then
+					Control.CastSpell(HK_Q,pos)
+				end
 			end
 		end
 	end
@@ -189,7 +290,7 @@ Callback.Add('Tick',function()
 				elseif EDamages[minion.networkID] then
 					EDamages[minion.networkID] = nil
 				end
-				if stacks > 0 and eDmg > minion.health then
+				if stacks > 0 and eDmg > minion.health + minion.hpRegen then
 					if (minion.team == 300 and KalistaMenu.Clear.EMob:Value()) or (minion.charName:find("Siege") and KalistaMenu.Clear.ESiege:Value())then	
 						Control.CastSpell(HK_E)
 					else
@@ -210,6 +311,18 @@ Callback.Add('Tick',function()
 				Control.CastSpell(HK_R)
 			end
 		end	
+	end
+	if KalistaMenu.Misc.AutoSentinel:Value() and Game.CanUseSpell(1) == 0 then
+		for i,pos in pairs(SentinelPos) do
+			if pos:DistanceTo(myHero.pos) < W.Range and Game.Timer() - LastSentinels[i] > 3 then
+				local mpos = Vector(pos.x,0,pos.z):ToMM()
+				Control.SetCursorPos(mpos.x,mpos.y)
+				Control.KeyDown(HK_W)
+				Control.KeyUp(HK_W)
+				LastSentinels[i] = Game.Timer() 
+				break
+			end
+		end
 	end
 end)
 
