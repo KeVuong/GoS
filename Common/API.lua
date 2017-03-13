@@ -1,61 +1,63 @@
-MenuElement - Class
-	MenuElement({}) -- initial call; returns instance
-		possible properties of the input table:
-			- id = "string", can be omitted but then it will not save
-			- name = "string"
-			- type = MENU|PARAM|SPACE,BUTTON, for PARAM type can be omitted
-			- leftIcon = "string" [URL!], -> icon displayed on the left, 100% menu height
-			- rightIcon = "string" [URL!] -> automatically converts param to boolean, 50% menu height
-			- icon = "string" [URL!] -> icon displayed on the right, e.g. sub menu, 100% menu height
-			- value =
-				-> true|false, creates boolean param
-				-> number, creates slider param
-					-> + min = "number" + max = "number" [+ step = "number"] [+ identifier = "string"]
+	MenuElement - Class
+		MenuElement({}) -- initial call; returns instance
+			possible properties of the input table:
+				- id = "string", can be omitted but then it will not save
+				- name = "string"
+				- type = MENU|PARAM|SPACE, for PARAM type can be omitted
+				- leftIcon = "string" [URL!], -> icon displayed on the left, 100% menu height
+				- rightIcon = "string" [URL!] -> automatically converts param to boolean, 50% menu height
+				- icon = "string" [URL!] -> icon displayed on the right, e.g. sub menu, 100% menu height
+				- value =
+					-> true|false, creates boolean param
+					-> number, creates slider param
+						-> + min = "number" + max = "number" [+ step = "number"] [+ identifier = "string"]
+						or
+						-> drop = {"string"[, "string", ...]}
+					-> table {"number", "number"}, creates min/max slider param
+						-> + min = "number" + max = "number" [+ step = "number"]
+				- color = "color", creates color param
+					-> Draw.Color(integer)
 					or
-					-> drop = {"string"[, "string", ...]}
-				-> table {"number", "number"}, creates min/max slider param
-					-> + min = "number" + max = "number" [+ step = "number"]
-			- color = "color", creates color param
-				-> Draw.Color(integer)
-				or
-				-> Draw.Color(hex)
-				or
-				-> Draw.Color(alpha, red, green, blue)
-				or
-				-> Draw.Color(hue, saturation, lightness)
-			- key = "number", creates key param
-			- callback = "function"
-				-> gets called on param change with changed value as input
-			- onhover = "function"
-				-> gets called on param hover with the param as input
-			- onclick = "function"
-				-> gets called on param click with the param as input
-			- tooltip = "string"
-				-> gets displayed on hover
-	instance:MenuElement({})
-		creates submenu
-	instance:Value([newVal])
-		-> if called without newVal it returns the current value
-		-> if called with newVal it'll set the current value to newVal and return it
-	instance:Sprite(which[, url])
-		-> which = "string"; "leftIcon"|"rightIcon"|"icon"
-		-> if called without url it returns the current sprite
-		-> if called with url it'll set the current sprite to that url
-	instance:Hide([bool])
-		-> if called without bool it'll toggle the hide property between true|false and return it
-		-> if called with bool it'll set the hide property to that value and return it
-	instance:Remove()
-		-> this will permanently remove the MenuElement
+					-> Draw.Color(hex)
+					or
+					-> Draw.Color(alpha, red, green, blue)
+					or
+					-> Draw.Color(hue, saturation, lightness)
+				- key = "number", creates key param
+				- toggle = "boolean", defaults to false, used to make a toggle key param
+				- callback = "function"
+					-> gets called on param change with changed value as input
+				- onKeyChange = "function"
+					-> gets called on key change with changed key as input
+				- onhover = "function"
+					-> gets called on param hover with the param as input
+				- onclick = "function"
+					-> gets called on param click with the param as input
+				- tooltip = "string"
+					-> gets displayed on hover
+		instance:MenuElement({})
+			creates submenu
+		instance:Value([newVal])
+			-> if called without newVal it returns the current value
+			-> if called with newVal it'll set the current value to newVal and return it
+		instance:Sprite(which[, url])
+			-> which = "string"; "leftIcon"|"rightIcon"|"icon"
+			-> if called without url it returns the current sprite
+			-> if called with url it'll set the current sprite to that url
+		instance:Hide([bool])
+			-> if called without bool it'll toggle the hide property between true|false and return it
+			-> if called with bool it'll set the hide property to that value and return it
+		instance:Remove()
+			-> this will permanently remove the MenuElement
 
-Example:
-	local menu = MenuElement({id = "myMenu", name = "This is my Menu", type = MENU})
-	menu:MenuElement({id = "bool", name = "My boolean Value", value = true})
-	menu:MenuElement({id = "slide", name = "My slider", value = 0.7, min = 0, max = 1, step = 0.1})
-	menu:MenuElement({id = "space", name = "This will get hidden on mouse click", type = SPACE, onclick = function() menu.space:Hide() end})
-	menu:MenuElement({type = BUTTON, id = "button", name = "My button", rightIcon = "http://wwww.example.com/button.png", callback = function() print"I have been pressed!" end})
-	Callback.Add("Tick", function()
-		PrintChat("My bool: "..tostring(menu.bool:Value()).."; My slider: "..menu.slide:Value()..";")
-	end)
+	Example:
+		local menu = MenuElement({id = "myMenu", name = "This is my Menu", type = MENU})
+		menu:MenuElement({id = "bool", name = "My boolean Value", value = true})
+		menu:MenuElement({id = "slide", name = "My slider", value = 0.7, min = 0, max = 1, step = 0.1})
+		menu:MenuElement({id = "space", name = "This will get hidden on mouse click", type = SPACE, onclick = function() menu.space:Hide() end})
+		Callback.Add("Tick", function()
+			PrintChat("My bool: "..tostring(menu.bool:Value()).."; My slider: "..menu.slide:Value()..";")
+		end)
 
 
 
@@ -74,6 +76,7 @@ Vector - Class
 		.onScreen -- for 2D vectors
 	functions:
 		:To2D() -- returns screenpos from Vector3 (alias ToScreen)
+		:ToMM() -- returns minimap position from Vector3
 		:Clone() -- returns a new vector
 		:Unpack() -- returns x, y, z
 		:DistanceTo(Vector) -- returns distance to another vector or, if ommited, myHero
@@ -155,6 +158,8 @@ GameObject
 		.maxHealth
 		.mana
 		.maxMana
+		.hudAmmo
+		.hudMaxAmmo --used for Jhin/Graves bullets or Annie stun or even Kled mount health; use with caution on other champs because it's not always 0 by default
 		.shieldAD
 		.shieldAP
 		.cdr
@@ -184,14 +189,16 @@ GameObject
 		.totalGold
 		.dead
 		.visible
+		.isImmortal --works for zhonya and kayle ulti ++
 		.isTargetable
+		.isTargetableToTeam --works for turrets
 		.distance
 		.pos
 		.posTo
 		.pos2D
 		.posMM
 		.dir
-		.isCampUp -- for camps only
+		.isCampUp -- for jungle camps only
 		.valid -- for units only
 		.attackData -- for units only
 			.state -- STATE_UNKNOWN, STATE_ATTACK, STATE_WINDUP, STATE_WINDDOWN
@@ -206,6 +213,16 @@ GameObject
 			.exp
 			.lvl
 			.lvlPts
+		.activeSpell
+			.valid --always use this to check if it's casting
+			.name
+			.startPos -- Vector
+			.placementPos -- Vector
+			.target -- GameObject handle
+			.windup
+			.animation
+		.activeSpellSlot --use this to determine which spell slot was activated for ".activeSpell"
+		.isChanneling --use this to determine if ".activeSpell" is actually a spell, otherwise it's autoattack
 		.missileData -- for missiles only
 			.name -- string
 			.owner -- GameObject handle
@@ -263,7 +280,7 @@ GameObject
 			.z
 		:GetCollision(width,speed,delay)
 			number --Collision Count
-		:IsValidTarget(range,team check,source or pos)
+		:IsValidTarget(range,team check,source or pos) -- returns a boolean
 
 
 
@@ -335,6 +352,8 @@ Draw API: {
 
 
 Control API: {
+	LeftClick = Executes a left mouse click; Input: (XYTable | x, y)
+	RightClick = Executes a right mouse click; Input: (XYTable | x, y)
     CastSpell = Executes a keystroke; Input: (char | byte)
     CastSpell = Executes a keystroke; Input: (char | byte, GameObject)
 	CastSpell = Executes a keystroke and moves mouse; Input: (char | byte, x, y) --screen position
@@ -382,7 +401,11 @@ Game API: {
     Ward = Input (index); Return the Wards at index
     ObjectCount = Input none; Return the total Object Count
     Object = Input (index); Return the Object at index
-	GetObjectByNetID(networkID); returns the object with the networkID requested
+	GetObjectByNetID = Input (networkID); returns the object with the networkID requested
+	Latency = Input none; Returns the game latency (ping)
+	CanUseSpell = Input (spell index); Returns the state of a specific spell
+	mousePos = alias to the global mouse pos; Return Vector3
+	cursorPos = alias to the global cursor pos; Return Vector2
 }
 
 
@@ -410,6 +433,14 @@ Global Constants:
 	SPRITE_PATH
 	SOUNDS_PATH
 	FONTS_PATH
+	
+	READY
+	NOTAVAILABLE
+	READYNOCAST
+	NOTLEARNED
+	ONCOOLDOWN
+	NOMANA
+	NOMANAONCOOLDOWN
 
 	WM_MOUSEHWHEEL
 	WM_MBUTTONUP
@@ -460,6 +491,7 @@ Global Constants:
 	HK_SUMMONER_2
 	HK_TCO -- Target Champions Only
 	HK_LUS -- Level Up Spell Hotkey
+	HK_MENU -- Hotkey for the LUA Menu
 	
 	MOUSEEVENTF_LEFTDOWN --used by mouse_event
 	MOUSEEVENTF_LEFTUP
@@ -486,4 +518,4 @@ Global Functions:
 	GetImageInfoFromFile(path)
 	PrintChat(message) -- prints one string
 	print(...) -- prints everything
-	DumpDocumentation(path) -- writes this text to a file
+	DumpDocumentation("api.lua") -- writes this text to a file
