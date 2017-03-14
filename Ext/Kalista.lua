@@ -3,7 +3,7 @@ if myHero.charName ~= "Kalista" then return end
 
 require "DamageLib"
 -- Spell Data
-local Q = {Range = 1150,Delay = 0.25, Radius = 50, Speed = 1200}
+local Q = {Range = 1150,Delay = 0.35, Radius = 50, Speed = 2400}
 local W = {Range = 5000}
 local E = {Range = 950}
 local R = {Range = 1100}
@@ -12,7 +12,15 @@ local Oathsworn = nil
 local RES = Game.Resolution()
 local SentinelPos = {Vector(5007.123535,0, 10471.446289),Vector(9866.148438,0, 4414.014160)}
 local LastSentinels = {0,0}
-
+local SlotToHK = {
+	[ITEM_1] = HK_ITEM_1,
+	[ITEM_2] = HK_ITEM_2,
+	[ITEM_3] = HK_ITEM_3,
+	[ITEM_4] = HK_ITEM_4,
+	[ITEM_5] = HK_ITEM_5,
+	[ITEM_6] = HK_ITEM_6,
+	[ITEM_7] = HK_ITEM_7,
+}
 -- Menu
 local KalistaMenu = MenuElement({type = MENU, id = "KalistaMenu", name = "Kalista", leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Kalista.png"})
 --[[Key]]
@@ -210,7 +218,7 @@ function GetEDamage(unit,stacks)
 end
 
 function GetQDamage(unit)
-	local basedmg = ({10, 70, 130, 190, 250})[myHero:GetSpellData(_Q).level] + source.totalDamage
+	local basedmg = ({10, 70, 130, 190, 250})[myHero:GetSpellData(_Q).level] + myHero.totalDamage
 	return CalcPhysicalDamage2(myHero,unit,basedmg)
 end
 
@@ -223,15 +231,16 @@ function UseItems()
 		end
 	end
 	local botrk = items[3153] or items[3144]
-	if (botrk and Game.CanUseSpell(botrk) == 0) and KalistaMenu.Item.Botrk.Enable:Value() and myHero.health/myHero.maxHealth < KalistaMenu.Item.BotrkHPPercent.Enable:Value()/100 then
+	
+	if botrk and myHero:GetSpellData(botrk).currentCd == 0 and KalistaMenu.Key.ComboKey:Value() and KalistaMenu.Item.Botrk.Enable:Value() and myHero.health/myHero.maxHealth < KalistaMenu.Item.Botrk.BotrkHPPercent:Value()/100 and myHero.attackData.state ~= 2 then
 		local target = GetTarget(550)
 		if target then
-			Control.CastSpell(botrk,target)
+			Control.CastSpell(SlotToHK[botrk],target)
 		end
 	end
 	
 	local qss = items[3140] or items[3139]
-	if qss and Game.CanUseSpell(qss) == 0 and KalistaMenu.Item.Qss.Enable:Value() then
+	if qss and myHero:GetSpellData(qss).currentCd == 0 and KalistaMenu.Item.Qss.Enable:Value() then
 		local buffs = {}
 		for i = 0, myHero.buffCount do
 			local buff = myHero:GetBuff(i)
@@ -240,7 +249,7 @@ function UseItems()
 			end
 		end
 		if buffs[5] or buffs[21] or buffs[22] or buffs[11] or buffs[8] or buffs[25] or buffs[31] then
-			Control.CastSpell(qss)
+			Control.CastSpell(SlotToHK[qss])
 		end
 	end
 end
@@ -250,9 +259,9 @@ Callback.Add('Tick',function()
 	if isReady(2) then
 		AutoE()
 	end
-	if KalistaMenu.Key.ComboKey:Value() and myHero.attackData.state ~= 2 then
-		UseItems()
-	end
+	
+	UseItems()
+	
 	if (KalistaMenu.Key.ComboKey:Value() and KalistaMenu.Combo.UseQ:Value()) or (KalistaMenu.Harass.UseQ:Value() and KalistaMenu.Key.HarassKey:Value() and myHero.mana/myHero.maxMana > KalistaMenu.Harass.Mana:Value()/100)	then
 		if isReady(_Q) then
 			local qTarget = GetTarget(Q.Range)
