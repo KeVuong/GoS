@@ -1,5 +1,7 @@
+
 if myHero.charName ~= "Kalista" then return end
 
+require "MapPosition"
 
 require "DamageLib"
 -- Spell Data
@@ -12,6 +14,8 @@ local Oathsworn = nil
 local RES = Game.Resolution()
 local SentinelPos = {Vector(5007.123535,0, 10471.446289),Vector(9866.148438,0, 4414.014160)}
 local LastSentinels = {0,0}
+local LastPositions = {}
+local LastWardTime = 0 
 local SlotToHK = {
 	[ITEM_1] = HK_ITEM_1,
 	[ITEM_2] = HK_ITEM_2,
@@ -21,6 +25,7 @@ local SlotToHK = {
 	[ITEM_6] = HK_ITEM_6,
 	[ITEM_7] = HK_ITEM_7,
 }
+
 -- Menu
 local KalistaMenu = MenuElement({type = MENU, id = "KalistaMenu", name = "Kalista", leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Kalista.png"})
 --[[Key]]
@@ -51,6 +56,7 @@ KalistaMenu.Item:MenuElement({type = MENU, id = "Qss", name = "Qss/Merc"})
 KalistaMenu.Item.Qss:MenuElement({id = "Enable", name = "Enable Usage", value = true})
 
 KalistaMenu:MenuElement({type = MENU, id = "Misc", name = "Misc Settings"})
+KalistaMenu.Misc:MenuElement({id = "WardBush", name = "Auto WardBush", value = true})
 KalistaMenu.Misc:MenuElement({id = "AutoSentinel", name = "Send Sentinel to Baron/Dragon", key = string.byte("M")})
 KalistaMenu.Misc:MenuElement({id = "SaveAlly", name = "Use Ult to Save Ally", value = true})
 KalistaMenu.Misc:MenuElement({id = "AllyHP", name = "Min Ally Health %", value = 20,min = 0, max = 100, step = 1})
@@ -254,12 +260,59 @@ function UseItems()
 	end
 end
 
+function AutoWardBush()
+	for i = 1, Game.HeroCount() do	
+		local hero = Game.Hero(i)
+		if not hero.dead and hero.visible and hero.isEnemy then
+			LastPositions[hero.networkID] = {pos = hero.pos, posTo = hero.posTo, dir = hero.dir, time = Game.Timer() }
+		end
+	end	
+	for i = 1, Game.HeroCount() do	
+		local hero = Game.Hero(i)
+		if not hero.dead and not hero.visible and hero.isEnemy and hero.distance < 1000 and Game.Timer() - LastWardTime > 5 then
+			local lastPosInfo = LastPositions[hero.networkID]
+			if lastPosInfo and Game.Timer() - lastPosInfo.time < 3 then
+				local inBush = false
+				local wardPos
+				for i = 1, 10 do
+					local checkPos = lastPosInfo.pos + lastPosInfo.dir*20*i
+					if checkPos:DistanceTo(myHero.pos) <= 600 and MapPosition:inBush(checkPos) then
+						wardPos = checkPos
+						inBush = true
+						break
+					end
+				end
+				if inBush and Game.Timer() - LastWardTime > 5 then
+					LastWardTime = Game.Timer()
+					CastWard(wardPos)
+					break
+				end
+			end
+		end
+	end	
+end
+
+function CastWard(pos)
+	local items = {}
+	for slot = ITEM_1,ITEM_7 do
+		local id = myHero:GetItemData(slot).itemID 
+		if id > 0 then
+			items[id] = slot
+		end
+	end
+	--2055 Control Ward
+	
+	local wardSlot = items[2055] or items[3340] or items[3363]
+	if wardSlot and myHero:GetSpellData(wardSlot).currentCd == 0 then
+		Control.CastSpell(SlotToHK[wardSlot], pos)
+	end
+end
+
 Callback.Add('Tick',function() 
 	FindTheOath()
 	if isReady(2) then
 		AutoE()
 	end
-	
 	UseItems()
 	
 	if (KalistaMenu.Key.ComboKey:Value() and KalistaMenu.Combo.UseQ:Value()) or (KalistaMenu.Harass.UseQ:Value() and KalistaMenu.Key.HarassKey:Value() and myHero.mana/myHero.maxMana > KalistaMenu.Harass.Mana:Value()/100)	then
@@ -313,6 +366,10 @@ Callback.Add('Tick',function()
 			Control.CastSpell(HK_E)
 		end
 	end
+	
+	if KalistaMenu.Misc.WardBush:Value() then
+		AutoWardBush()
+	end	
 	
 	if isReady(3) and Oathsworn and KalistaMenu.Misc.SaveAlly:Value() then
 		if isValidTarget(Oathsworn,R.Range) then
