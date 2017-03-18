@@ -7,7 +7,7 @@ require "DamageLib"
 -- Spell Data
 local Q = {Range = 1150,Delay = 0.35, Radius = 50, Speed = 2400}
 local W = {Range = 5000}
-local E = {Range = 950}
+local E = {Range = 1000}
 local R = {Range = 1100}
 local EDamages = {}
 local Oathsworn = nil
@@ -16,6 +16,9 @@ local SentinelPos = {Vector(5007.123535,0, 10471.446289),Vector(9866.148438,0, 4
 local LastSentinels = {0,0}
 local LastPositions = {}
 local LastWardTime = 0 
+local useExtLib = nil
+local Ts = nil
+
 local SlotToHK = {
 	[ITEM_1] = HK_ITEM_1,
 	[ITEM_2] = HK_ITEM_2,
@@ -90,6 +93,7 @@ function HasBuff(unit, buffname)
 end
 
 function GetTarget(range)
+	if Ts then return Ts:GetTarget(range) end
 	local result = nil
 	local N = 0
 	for i = 1,Game.HeroCount()  do
@@ -332,7 +336,11 @@ Callback.Add('Tick',function()
 					end
 				end
 				if not collision	and myHero.attackData.state ~= 2 then
-					Control.CastSpell(HK_Q,pos)
+					if useExtLib then
+						useExtLib:CastSpell(HK_Q,pos)
+					else
+						Control.CastSpell(HK_Q,pos)
+					end	
 				end
 			end
 		end
@@ -428,4 +436,9 @@ Callback.Add("Draw", function()
 	Draw.Text(text,20,RES.x/2 - rec.x,RES.y*0.75,color)
 	text = "E Kills "..tostring(KalistaMenu.Clear.EKillMinion:Value()).." Minions"
 	Draw.Text(text,20,RES.x/2 - rec.x,RES.y*0.75 + rec.y,Draw.Color(150, 0, 255, 0))
+end)
+
+Callback.Add("Load",function() 
+	Ts = TargetSelector
+	useExtLib = _G.SpellCast 
 end)
