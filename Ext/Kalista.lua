@@ -72,6 +72,7 @@ KalistaMenu.Drawing:MenuElement({id = "DrawW", name = "Draw W Range (MiniMap)", 
 KalistaMenu.Drawing:MenuElement({id = "DrawE", name = "Draw E Range", value = true})
 KalistaMenu.Drawing:MenuElement({id = "DrawR", name = "Draw R Range", value = true})
 KalistaMenu.Drawing:MenuElement({id = "DrawEDmg", name = "Draw E Dmg", value = true})
+KalistaMenu.Drawing:MenuElement({id = "DrawStatus", name = "Show Settings", value = true})
 
 function isReady(slot)
 	return Game.CanUseSpell(slot) == 0
@@ -132,22 +133,8 @@ end
 
 function CalcPhysicalDamage2(source, target, amount)
 	local ArmorPenPercent = source.armorPenPercent
-	local ArmorPenFlat = source.armorPen * (0.6 + (0.4 * (target.levelData.lvl / 18))) 
+	local ArmorPenFlat = source.armorPen * (0.6 + (0.4 * (target.levelData.lvl / 18)))
 	local BonusArmorPen = source.bonusArmorPenPercent
-	
-	if source.type == Obj_AI_Minion then
-		ArmorPenPercent = 1
-		ArmorPenFlat = 0
-		BonusArmorPen = 1
-	elseif source.type == Obj_AI_Turret then
-		ArmorPenFlat = 0
-		BonusArmorPen = 1
-		if source.charName:find("3") or source.charName:find("4") then
-			ArmorPenPercent = 0.25
-		else
-			ArmorPenPercent = 0.7
-		end	
-	end
 
 	local armor = target.armor
 	local bonusArmor = target.bonusArmor
@@ -217,6 +204,7 @@ function GetEStacks(unit)
 			return buff.count
 		end
 	end
+
 	return 0
 end
 
@@ -429,6 +417,8 @@ Callback.Add("Draw", function()
 			end
 		end
 	end
+	if not KalistaMenu.Drawing.DrawStatus:Value() then return end
+	
 	local text = KalistaMenu.Clear.EMob:Value() and "ON" or "OFF"
 	local color = KalistaMenu.Clear.EMob:Value() and Draw.Color(150, 0, 255, 0) or Draw.Color(150,255,0,0)
 	text = "KS Mob: "..text
@@ -442,3 +432,5 @@ Callback.Add("Load",function()
 	Ts = TargetSelector
 	useExtLib = _G.SpellCast 
 end)
+
+
