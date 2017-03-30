@@ -5,9 +5,9 @@ if myHero.charName ~= "Karthus" then return end
 
 local Version = '0.22'
 
-local Q = {Delay = 0.15,Radius = 135,Range = 890,Speed = math.huge}
+local Q = {Delay = 0.75,Radius = 135,Range = 890,Speed = math.huge}
 local W = {Delay = 0.5,Radius = 60,Range = 1000,Speed = math.huge}--20.000
-local E = {Delay = 0.75,Radius = 60 ,Range = 520,Speed = math.huge}
+local E = {Delay = 0.25,Radius = 60 ,Range = 520,Speed = math.huge}
 local R = {Delay = 0.6,Radius = 100,Range = 25000,Speed = math.huge}
 local Exhaust = myHero:GetSpellData(SUMMONER_1).name:find("Exhaust") and HK_SUMMONER_1 or myHero:GetSpellData(SUMMONER_2).name:find("Exhaust") and HK_SUMMONER_2 or nil
 local ExhaustSlot = Exhaust == HK_SUMMONER_1 and SUMMONER_1 or Exhaust == HK_SUMMONER_2 and SUMMONER_2 or nil
