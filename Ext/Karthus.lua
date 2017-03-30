@@ -1,27 +1,13 @@
 
-
 if myHero.charName ~= "Karthus" then return end
 --require "DamageLib"
 
 
-function CalcMagicalDamage(source, target, amount)
-  local mr = target.magicResist
-  local value = 100 / (100 + (mr * source.magicPenPercent) - source.magicPen)
-
-  if mr < 0 then
-    value = 2 - 100 / (100 - mr)
-  elseif (mr * source.magicPenPercent) - source.magicPen < 0 then
-    value = 1
-  end
-  return value * amount
-end
-
-
 local Version = '0.22'
 
-local Q = {Delay = 0.75,Radius = 135,Range = 890,Speed = math.huge}
+local Q = {Delay = 0.15,Radius = 135,Range = 890,Speed = math.huge}
 local W = {Delay = 0.5,Radius = 60,Range = 1000,Speed = math.huge}--20.000
-local E = {Delay = 0.25,Radius = 60 ,Range = 520,Speed = math.huge}
+local E = {Delay = 0.75,Radius = 60 ,Range = 520,Speed = math.huge}
 local R = {Delay = 0.6,Radius = 100,Range = 25000,Speed = math.huge}
 local Exhaust = myHero:GetSpellData(SUMMONER_1).name:find("Exhaust") and HK_SUMMONER_1 or myHero:GetSpellData(SUMMONER_2).name:find("Exhaust") and HK_SUMMONER_2 or nil
 local ExhaustSlot = Exhaust == HK_SUMMONER_1 and SUMMONER_1 or Exhaust == HK_SUMMONER_2 and SUMMONER_2 or nil
@@ -89,7 +75,7 @@ function GetTarget(range)
 	local N = 0
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
-		if ValidTarget(hero,range) and hero.team ~= myHero.team then
+		if ValidTarget(hero,range) and hero.isEnemy then
 			local dmgtohero = CalcMagicalDamage(myHero,hero,100)
 			local tokill = hero.health/dmgtohero
 			if tokill > N or result == nil then
@@ -159,195 +145,16 @@ function CountObjectsNearPos(pos, range, radius, objects)
 
 end
 
--- Main
+function CalcMagicalDamage(source, target, amount)
+  local mr = target.magicResist
+  local value = 100 / (100 + (mr * source.magicPenPercent) - source.magicPen)
 
-function OnTick()
-	if CountEnemy(myHero.pos,E.Range) >= 3 then
-		local slot = GetItemSlot(myHero,3157)
-		if slot > 0 and Game.CanUseSpell(slot) == READY then
-			if myHero:GetSpellData(_E).toggleState == 1 and Game.CanUseSpell(_E) == READY then
-				Control.CastSpell(HK_E)	
-			end
-			DelayAction(function() Control.CastSpell(slot) end, 0.1)
-		end
-	end
-	if isReady(_R) and os.clock() - LastDmg > 0.5 then -- wood pc
-		LastDmg = os.clock()
-		for i = 1,Game.HeroCount()  do
-			local hero = Game.Hero(i)
-			if hero.isEnemy and ValidTarget(hero) then
-				RDamages[hero.networkID] = GetDamage(_R,hero,myHero)
-			end
-		end	
-	end
-	if KarthusMenu.Key.Combo:Value() then
-		Combo()
-	elseif KarthusMenu.Key.Harass:Value() then
-		Harass()
-	elseif KarthusMenu.Key.LaneClear:Value() then
-		LaneClear()
-	elseif KarthusMenu.Key.LastHit:Value() then
-		LastHit()
-	end
-end
-
-
-function DisableOrb(OW)
-	OW.enableAttack = false
-	OW.enableMove = false
-end
-
-function EnableOrb(OW)
-	OW.enableAttack = true
-	OW.enableMove = true
-end
-
-
-function Combo(OW)
-	local qtarget = GetTarget(Q.Range)	
-	local wtarget = GetTarget(W.Range)
-	local etarget = GetTarget(E.Range)
-	local disable = false
-	if Exhaust and Game.CanUseSpell(ExhaustSlot) == READY and KarthusMenu.Combo.Exhaust:Value() then
-		if etarget and etarget.health < GetComboDamage(etarget) and etarget.health > GetComboDamage2(etarget) then
-			--SpellCast:CastSpell(Exhaust,etarget)
-			Control.CastSpell(Exhaust,etarget)
-		end
-	end
-	
-	if qtarget and Game.CanUseSpell(_Q) == READY then
-		CastQ(qtarget)
-	end
-	
-	if Game.CanUseSpell(_W) == READY and wtarget  then
-		CastW(wtarget)
-	end
-	
-	if Game.CanUseSpell(_E) == READY and etarget and myHero:GetSpellData(_E).toggleState == 1 and myHero.mana > GetManaCost(_R) + GetManaCost(_E) + 2*GetManaCost(_Q) then 
-		Control.CastSpell(HK_E)	
-	elseif 	Game.CanUseSpell(_E) == READY and myHero:GetSpellData(_E).toggleState == 2 and (not etarget or myHero.mana < GetManaCost(_R) + 2*GetManaCost(_Q)) then 
-		Control.CastSpell(HK_E)	
-	end
-end
-
-function LaneClear()
-	if myHero.mana < KarthusMenu.LaneClear.Mana:Value()*myHero.maxMana*0.01 then return end
-	if myHero.attackData.state == 2 then return end
-	local qminions = {}
-	local eminions = {}
-	for i = 1, Game.MinionCount() do
-		local minion = Game.Minion(i)
-		if ValidTarget(minion,E.Range) then
-			table.insert(eminions,minion)
-		end
-		if ValidTarget(minion,Q.Range) then
-			table.insert(qminions,minion)
-		end
-	end
-
-	if Game.CanUseSpell(_E) == READY and myHero:GetSpellData(_E).toggleState == 1 and myHero.mana > KarthusMenu.LaneClear.Mana:Value()*myHero.maxMana*0.01 and #eminions >= KarthusMenu.LaneClear.MinionE:Value() then 
-		Control.CastSpell(HK_E)
-	elseif 	Game.CanUseSpell(_E) == READY and myHero:GetSpellData(_E).toggleState == 2 and #eminions < KarthusMenu.LaneClear.MinionE:Value() then
-		Control.CastSpell(HK_E)
-	end
-	if Game.CanUseSpell(_Q) == READY and OW:CanMove() then
-		local qPos,qHit = GetBestCircularFarmPosition(Q.Range,Q.Radius + 40,qminions)
-		if qHit >= KarthusMenu.LaneClear.MinionQ:Value() then
-			--SpellCast:CastSpell(HK_Q,qPos)
-			Control.CastSpell(HK_Q,qPos)
-			return
-		end
-	end
-	
-end
-
-function Harass()
---	OW.enableAttack = false
-	if myHero.attackData.state ~= 1 then return end
-	local qtarget = GetTarget(Q.Range)
-	if qtarget and Game.CanUseSpell(_Q) == READY  then
-		CastQ(qtarget)
-	end
-
-	for i = 1, Game.MinionCount() do
-		local minion = Game.Minion(i)
-		if Game.CanUseSpell(_Q) == READY and ValidTarget(minion,Q.Range) and (GetDistanceSqr(minion.pos,myHero.pos) > myHero.range + myHero.boundingRadius + minion.boundingRadius or myHero:GetSpellData(_Q).level > 4) and GetDamage(_Q,minion,myHero) > minion.health and myHero.attackData.state ~= 2 then
-			CastQ(minion)
-			return
-		end
-	end
-	--OW.enableAttack = true
-end
-
-function LastHit()
-	if myHero.attackData.state ~= 1 then return end
-	for i = 1, Game.MinionCount() do
-		local minion = Game.Minion(i)
-		if Game.CanUseSpell(_Q) == READY and ValidTarget(minion,Q.Range) and (GetDistanceSqr(minion.pos,myHero.pos) > myHero.range + myHero.boundingRadius + minion.boundingRadius  or myHero:GetSpellData(_Q).level > 4) and GetDamage(_Q,minion,myHero) > minion.health then--q dmg > attack dmg
-			CastQ(minion)
-			return
-		end
-	end
-	
-end
-
-function CastQ(target)
-	if Pred then
-		local CastPosition,Hitchance = Pred:GetPrediction(qtarget,Q)
-		if  Hitchance == "High" then
-			LastQPos = CastPosition
-			SpellCast:CastSpell(HK_Q,CastPosition)
-		end
-		return
-	end	
-	local pos = target:GetPrediction(Q.Speed,Q.Delay)
-	Control.CastSpell(HK_Q,pos)
-end
-
-function CastW(target)
-	if Pred then
-		local CastPosition,Hitchance  = Pred:GetPrediction(wtarget,W)
-		if Hitchance == "High" then	
-			disable = true
-			SpellCast:CastSpell(HK_W,CastPosition)
-		end
-		return
-	end
-	local pos = target:GetPrediction(W.Speed,W.Delay)
-	Control.CastSpell(HK_W,pos)	
-end
-
-
-function OnDraw()
-	if myHero.dead then return end
-	if LastQPos then 
-		Draw.Circle(LastQPos,135,1,Draw.Color(255, 228, 196, 255))
-	end
-	if KarthusMenu.Drawing.DrawQ:Value() and myHero:GetSpellData(_Q).level > 0 then
-		Draw.Circle(myHero.pos,Q.Range,1,Draw.Color(200, 228, 196, 255))
-	end	
-	if KarthusMenu.Drawing.DrawE:Value() and myHero:GetSpellData(_E).level > 0 then
-		Draw.Circle(myHero.pos,E.Range,1,Draw.Color(200, 255, 255, 255))
-	end
-	if KarthusMenu.Drawing.DrawText:Value() and isReady(_R) then
-		local rkills = {}
-		for i = 1,Game.HeroCount()  do
-			local hero = Game.Hero(i)
-			if hero.isEnemy and ValidTarget(hero) and RDamages[hero.networkID] then
-				if RDamages[hero.networkID] > hero.health then
-					table.insert(rkills,hero)
-					if hero.pos:To2D().onScreen then
-						Draw.Text("R Killable!",20,Vector(hero.pos):To2D())
-					else
-						--PrintChat("Enemy "..hero.charName.." Is Killable")
-					end					
-				end
-			end
-		end	
-		if #rkills > 0 then
-			Draw.Text("R Will Kill "..tostring(#rkills).." enemies" ,20,Vector(myHero.pos):To2D())--kappa
-		end
-	end
+  if mr <= 0 then
+    value = 2 - 100 / (100 - mr)
+  elseif (mr * source.magicPenPercent) - source.magicPen < 0 then
+    value = 100/(100 + mr * source.magicPenPercent)
+  end
+  return value * amount
 end
 
 
@@ -396,5 +203,196 @@ function GetDamage(slot,unit)
 	if slot == _E then
 		local dmg = ({30, 50, 70, 90, 110})[myHero:GetSpellData(_E).level] + 0.2 * myHero.ap
 		return CalcMagicalDamage(myHero,unit,dmg)
+	end
+end
+
+
+
+function DisableOrb(OW)
+	OW.enableAttack = false
+	OW.enableMove = false
+end
+
+function EnableOrb(OW)
+	OW.enableAttack = true
+	OW.enableMove = true
+end
+
+
+function Combo(OW)
+	local qtarget = GetTarget(Q.Range)	
+	local wtarget = GetTarget(W.Range)
+	local etarget = GetTarget(E.Range)
+	local disable = false
+	if Exhaust and Game.CanUseSpell(ExhaustSlot) == READY and KarthusMenu.Combo.Exhaust:Value() then
+		if etarget and etarget.health < GetComboDamage(etarget) and etarget.health > GetComboDamage2(etarget) then
+			Control.CastSpell(Exhaust,etarget)
+		end
+	end
+	
+	if qtarget and Game.CanUseSpell(_Q) == READY then
+		CastQ(qtarget)
+	end
+	
+	if Game.CanUseSpell(_W) == READY and wtarget  then
+		CastW(wtarget)
+	end
+	
+	if Game.CanUseSpell(_E) == READY and etarget and myHero:GetSpellData(_E).toggleState == 1 and myHero.mana > GetManaCost(_R) + GetManaCost(_E) + 2*GetManaCost(_Q) then 
+		Control.CastSpell(HK_E)	
+	elseif 	Game.CanUseSpell(_E) == READY and myHero:GetSpellData(_E).toggleState == 2 and (not etarget or myHero.mana < GetManaCost(_R) + 2*GetManaCost(_Q)) then 
+		Control.CastSpell(HK_E)	
+	end
+end
+
+function LaneClear()
+	if myHero.mana < KarthusMenu.LaneClear.Mana:Value()*myHero.maxMana*0.01 then return end
+	if myHero.attackData.state == 2 then return end
+	
+	local qminions = {}
+	local eminions = {}
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i)
+		if minion.isEnemy and ValidTarget(minion,E.Range) then
+			table.insert(eminions,minion)
+		end
+		if minion.isEnemy and ValidTarget(minion,Q.Range) then
+			table.insert(qminions,minion)
+		end
+	end
+
+	if Game.CanUseSpell(_E) == READY and myHero:GetSpellData(_E).toggleState == 1 and myHero.mana > KarthusMenu.LaneClear.Mana:Value()*myHero.maxMana*0.01 and #eminions >= KarthusMenu.LaneClear.MinionE:Value() then 
+		Control.CastSpell(HK_E)
+	elseif 	Game.CanUseSpell(_E) == READY and myHero:GetSpellData(_E).toggleState == 2 and #eminions < KarthusMenu.LaneClear.MinionE:Value() then
+		Control.CastSpell(HK_E)
+	end
+	if Game.CanUseSpell(_Q) == READY and OW:CanMove() then
+		local qPos,qHit = GetBestCircularFarmPosition(Q.Range,Q.Radius + 40,qminions)
+		if qHit >= KarthusMenu.LaneClear.MinionQ:Value() then
+			--SpellCast:CastSpell(HK_Q,qPos)
+			Control.CastSpell(HK_Q,qPos)
+			return
+		end
+	end
+	
+end
+
+function Harass()
+
+	if myHero.attackData.state ~= 1 then return end
+
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i)
+		if Game.CanUseSpell(_Q) == READY and minion.isEnemy and ValidTarget(minion,Q.Range) and (GetDistance(minion.pos,myHero.pos) > myHero.range + myHero.boundingRadius + minion.boundingRadius or myHero:GetSpellData(_Q).level > 4) and GetDamage(_Q,minion,myHero) > minion.health and myHero.attackData.state ~= 2 then
+			CastQ(minion)
+			return
+		end
+	end
+	local qtarget = GetTarget(Q.Range)
+	if qtarget and Game.CanUseSpell(_Q) == READY  then
+		CastQ(qtarget)
+	end
+	--OW.enableAttack = true
+end
+
+function LastHit()
+	if myHero.attackData.state ~= 1 then return end
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i)
+		if Game.CanUseSpell(_Q) == READY and minion.isEnemy and ValidTarget(minion,Q.Range) and (GetDistance(minion.pos,myHero.pos) > myHero.range + myHero.boundingRadius + minion.boundingRadius  or myHero:GetSpellData(_Q).level > 4) and GetDamage(_Q,minion,myHero) > minion.health then--q dmg > attack dmg
+			CastQ(minion)
+			return
+		end
+	end
+	
+end
+
+function CastQ(target)
+	if Pred then
+		local CastPosition,Hitchance = Pred:GetPrediction(qtarget,Q)
+		if  Hitchance == "High" then
+			LastQPos = CastPosition
+			SpellCast:CastSpell(HK_Q,CastPosition)
+		end
+		return
+	end	
+	local pos = target:GetPrediction(Q.Speed,Q.Delay)
+	Control.CastSpell(HK_Q,pos)
+end
+
+function CastW(target)
+	if Pred then
+		local CastPosition,Hitchance  = Pred:GetPrediction(wtarget,W)
+		if Hitchance == "High" then	
+			disable = true
+			SpellCast:CastSpell(HK_W,CastPosition)
+		end
+		return
+	end
+	local pos = target:GetPrediction(W.Speed,W.Delay)
+	Control.CastSpell(HK_W,pos)	
+end
+
+
+-- Main
+
+function OnTick()
+	if CountEnemy(myHero.pos,E.Range) >= 3 then
+		local slot = GetItemSlot(myHero,3157)
+		if slot > 0 and Game.CanUseSpell(slot) == READY then
+			if myHero:GetSpellData(_E).toggleState == 1 and Game.CanUseSpell(_E) == READY then
+				Control.CastSpell(HK_E)	
+			end
+			DelayAction(function() Control.CastSpell(slot) end, 0.1)
+		end
+	end
+	if isReady(_R) and os.clock() - LastDmg > 0.5 then -- wood pc
+		LastDmg = os.clock()
+		for i = 1,Game.HeroCount()  do
+			local hero = Game.Hero(i)
+			if hero.isEnemy and ValidTarget(hero) then
+				RDamages[hero.networkID] = GetDamage(_R,hero,myHero)
+			end
+		end	
+	end
+	if KarthusMenu.Key.Combo:Value() then
+		Combo()
+	elseif KarthusMenu.Key.Harass:Value() then
+		Harass()
+	elseif KarthusMenu.Key.LaneClear:Value() then
+		LaneClear()
+	elseif KarthusMenu.Key.LastHit:Value() then
+		LastHit()
+	end
+end
+
+
+function OnDraw()
+	if myHero.dead then return end
+
+	if KarthusMenu.Drawing.DrawQ:Value() and myHero:GetSpellData(_Q).level > 0 then
+		Draw.Circle(myHero.pos,Q.Range,1,Draw.Color(200, 228, 196, 255))
+	end	
+	if KarthusMenu.Drawing.DrawE:Value() and myHero:GetSpellData(_E).level > 0 then
+		Draw.Circle(myHero.pos,E.Range,1,Draw.Color(200, 255, 255, 255))
+	end
+	if KarthusMenu.Drawing.DrawText:Value() and isReady(_R) then
+		local rkills = {}
+		for i = 1,Game.HeroCount()  do
+			local hero = Game.Hero(i)
+			if hero.isEnemy and ValidTarget(hero) and RDamages[hero.networkID] then
+				if RDamages[hero.networkID] > hero.health then
+					table.insert(rkills,hero)
+					if hero.pos:To2D().onScreen then
+						Draw.Text("R Killable!",20,Vector(hero.pos):To2D())
+					else
+						--PrintChat("Enemy "..hero.charName.." Is Killable")
+					end					
+				end
+			end
+		end	
+		if #rkills > 0 then
+			Draw.Text("R Will Kill "..tostring(#rkills).." enemies" ,20,Vector(myHero.pos):To2D())--kappa
+		end
 	end
 end
