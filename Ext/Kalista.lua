@@ -5,7 +5,7 @@ require "MapPosition"
 
 require "DamageLib"
 -- Spell Data
-local Q = {Range = 1150,Delay = 0.35, Radius = 50, Speed = 2400}
+local Q = {Range = 1150,Delay = 0.45, Radius = 50, Speed = 2100}
 local W = {Range = 5000}
 local E = {Range = 1000}
 local R = {Range = 1100}
