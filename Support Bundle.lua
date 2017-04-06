@@ -38,7 +38,7 @@ end
 
 if not SupportHeroes[myHero.charName] then return end
 
-local ver = "2017031300"
+local ver = "20170406000"
 
 require "DamageLib"
 
@@ -2891,15 +2891,6 @@ function Blitzcrank:Draw()
 	end
 	if self.Menu.Draw.Pos:Value() and self.pos then
 		DrawCircle3D(self.pos.x,self.pos.y,self.pos.z,65,2,ARGB(222,20,90,255),20)
-	end
-end
-
-if GetUser() ~= "MeoBeo" then
-	if not FileExist(COMMON_PATH.. "Analytics.lua") then
-		DownloadFileAsync("https://raw.githubusercontent.com/LoggeL/GoS/master/Analytics.lua", COMMON_PATH .. "Analytics.lua", function() end)
-	else
-		require("Analytics")
-		Analytics("SupportBundle","BigFatCat")
 	end
 end
 
