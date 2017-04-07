@@ -1042,6 +1042,7 @@ function Soraka:LoadMenu()
 	
 	self.Menu:MenuElement({id = "Rset", name = "> R Settings",type = MENU})
 	self.Menu.Rset:MenuElement({id = "AutoR", name = "Enable Auto R",value = true})
+	self.Menu.Rset:MenuElement({id = "AllyHp", name = "Heal Allies if HP Percent below",value = 15, min = 1, max = 100,step = 1})
 	
 	self.Menu:MenuElement({type = MENU, id = "Draw",name = "> Draw Settings"})
 	self.Menu.Draw:MenuElement({id = "Q", name = "Draw Q Range", value = true})
@@ -1153,7 +1154,7 @@ end
 function Soraka:AutoR()
 	if (not isReady(_R) or not self.Menu.Rset.AutoR:Value())then return end
 	for i, ally in pairs(self.Allies) do
-		if (ally.health/ally.maxHealth  < self.Menu.Wset.MyHp:Value()/100) and (CountEnemies(ally.pos,E.range - 100) > 0) then
+		if (ally.health/ally.maxHealth  < self.Menu.Rset.AllyHp:Value()/100) and (CountEnemies(ally.pos,400) > 0) then
 			Control.CastSpell(HK_R)
 			return
 		end	
