@@ -1,4 +1,3 @@
-
 if myHero.charName ~= "Zilean" then return end
 
 local Q = {Delay = 0.45,Radius = 180,Range = 900,Speed = 2000}
@@ -32,27 +31,57 @@ local Attack = true
 local Move = true
 local LastMove = 0
 local State = 1
+local Mouse
+local function EnableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(true)
+		_G.SDK.Orbwalker:SetMovement(true)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = false
+		_G.GOS.BlockAttack  = false
+	end
+end
 
-local function CastSpell(hk,pos,delay)
-	if State == 2 then return false end
-	State = 2
-	Attack = false
-	Move = false
-	delay = delay or 0.25
+local function DisableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(false)
+		_G.SDK.Orbwalker:SetMovement(false)
+	end
 	if _G.GOS then
 		_G.GOS.BlockMovement = true
 		_G.GOS.BlockAttack  = true
 	end
-	Control.CastSpell(hk,pos)
-	DelayAction(function()
-		if _G.GOS then
-			_G.GOS.BlockMovement = false
-			_G.GOS.BlockAttack  = false
-		end
-		Attack = true
-		Move = true
-		State = 1
-	end, delay)
+end
+
+local spellcast = {state = 1, mouse = mousePos}
+
+function CastSpell(hk,pos,delay)
+	if spellcast.state == 2 then return end
+	spellcast.state = 2
+	DisableOrb()
+	spellcast.mouse = mousePos
+	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
+	if true then
+		DelayAction(function() 
+			--print("keydown")
+			Control.KeyDown(hk)
+			Control.KeyUp(hk)
+		end, 0.012)
+		DelayAction(function()
+			Control.SetCursorPos(spellcast.mouse)
+		end,0.15)
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.1)
+	else
+		
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.01)
+	end
 end
 
 local ZileanMenu = MenuElement({ id = "ZileanMenu", name = "Zilean - The Master of Time",type = MENU, leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Zilean.png"})
@@ -97,11 +126,11 @@ function LoadMenu()
 	
 	ZileanMenu:MenuElement({id = "KS", name = "> KillSteal Settings", type = MENU})
 	ZileanMenu.KS:MenuElement({id = "Q", name = "Use Q",value = true})
-	ZileanMenu.KS:MenuElement({id = "E", name = "Use E",value = true})
 	ZileanMenu.KS:MenuElement({id = "Ignite", name = "Use Ignite",value = true})
 	
 	ZileanMenu:MenuElement({id = "Draw", name = "> Draw Settings", type = MENU})
 	ZileanMenu.Draw:MenuElement({id = "Q", name = "Draw Q Range", value = true})
+	
 	ZileanMenu.Draw:MenuElement({id = "E",name = "Draw E Range", value = true})
 	ZileanMenu.Draw:MenuElement({id = "R", name ="Draw R Range", value = true})
 end	
@@ -128,7 +157,8 @@ local function GetClosetTarget()
 	local dist = 0
 	local target = nil
 	for i = 1,Game.HeroCount()  do
-		local hero = Game.Hero(i)	
+		local hero = Game.Hero(i)
+
 		if ValidTarget(hero,range) and hero.isEnemy and dist < hero.distance and hero.distance < 2000 then
 			dist = hero.distance
 			target = hero
@@ -177,6 +207,7 @@ local function GetTarget(range)
 	local N = 0
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
+		
 		if ValidTarget(hero,range) and hero.isEnemy then
 			local dmgtohero = CalcMagicalDamage(myHero,hero,100)
 			local tokill = hero.health/dmgtohero
@@ -230,14 +261,15 @@ end
 
 function AutoR()
 	if ZileanMenu.Rset.Me:Value() and myHero.health/myHero.maxHealth < ZileanMenu.Rset.MyHp:Value()/100 and CountEnemiesInRange(myHero.pos,500) > 0 then
-		CastSpell(HK_R,myHero)
+	
+		CastSpell(HK_R,myHero.pos)
 		return
 	end
 	if ZileanMenu.Rset.Ally:Value() then
 		for i = 1,Game.HeroCount()  do
 			local ally = Game.Hero(i)
-			if not ally.dead and ally.distance <= R.Range and ally.health/ally.maxHealth < ZileanMenu.Rset.AllyHp:Value()/100  and CountEnemiesInRange(ally.pos,500) > 0 then
-				CastSpell(HK_R,ally)
+			if ally.isAlly and not ally.isMe and not ally.dead and ally.distance <= R.Range and ally.health/ally.maxHealth < ZileanMenu.Rset.AllyHp:Value()/100  and CountEnemiesInRange(ally.pos,500) > 0 then
+				CastSpell(HK_R,ally.pos)
 				return
 			end
 		end
@@ -253,7 +285,7 @@ function ProcessSpell()
 				local info = InitiatorsList[ally.charName]
 				if spell.valid and spell.name:lower() == info.Name then
 					if CountEnemiesInRange(spell.endPos, 500)  > 0 then
-						CastSpell(HK_Q,ally)
+						CastSpell(HK_Q,ally.pos)
 					end
 				end
 			end
@@ -265,7 +297,7 @@ function ProcessSpell()
 			if enemy.isEnemy and enemy.activeSpell.valid and enemy.activeSpell.name:lower() == "summonerdot" and enemy.activeSpell.target > 0 then
 				local ally = Game.GetObjectByNetID(enemy.activeSpell.target)	
 				if ally and ally.health < 50+20*enemy.levelData.lvl then
-					CastSpell(HK_R,ally)
+					CastSpell(HK_R,ally.pos)
 				end
 			end
 		end
@@ -281,7 +313,7 @@ function Combo()
 		else
 			for i = 1, Game.HeroCount() do
 				local ally = Game.Hero(i)
-				if not ally.dead and ally.distance < Q.Range + 60 and CountEnemiesInRange(ally.pos,400) > 0 then
+				if ally.isAlly and not ally.isMe and not ally.dead and ally.distance < Q.Range + 60 and CountEnemiesInRange(ally.pos,400) > 0 then
 					CastQ(ally)
 					break
 				end
@@ -295,18 +327,18 @@ function Combo()
 	if Ready(_E) and ZileanMenu.Eset.Combo:Value() then
 		local eTarget = GetTarget(E.Range)
 		if eTarget then
-			CastSpell(HK_E,eTarget)
+			CastSpell(HK_E,eTarget.pos)
 			return
 		else
 			local target = GetClosetTarget(myHero.pos)
 			if target and target.distance <  E.Range + ((({40 , 55 , 70 , 85 , 99})[myHero:GetSpellData(_E).level]/100 + 1)*myHero.ms - target.ms)*2.5 then
-				CastSpell(HK_E,myHero)
+				CastSpell(HK_E,myHero.pos)
 				return
 			elseif target then
 				for i = 1, Game.HeroCount() do
 					local ally = Game.Hero(i)
-					if not ally.dead and ally.distance < E.Range and CountEnemiesInRange(ally.pos,600) > 0 then
-						CastSpell(HK_E,ally)
+					if ally.isAlly and not ally.isMe and not ally.dead and ally.distance < E.Range and CountEnemiesInRange(ally.pos,600) > 0 then
+						CastSpell(HK_E,ally.pos)
 					end
 				end	
 			end
@@ -328,14 +360,14 @@ function Harass()
 	if Ready(_E) and ZileanMenu.Eset.Harass:Value() then
 		local eTarget = GetTarget(E.Range)
 		if eTarget then
-			CastSpell(HK_E,eTarget)
+			CastSpell(HK_E,eTarget.pos)
 		end
 	end
 end
 
 function Flee()
 	if Ready(_E) and not HasBuff(myHero,"timewarp") then
-		CastSpell(HK_E,myHero)
+		CastSpell(HK_E,myHero.pos)
 	end
 	if Ready(_W) and (not Ready(_Q) or not Ready(_E) or not Ready(_R)) then
 		Control.CastSpell(HK_W)
@@ -346,6 +378,9 @@ function Flee()
 end
 
 Callback.Add("Tick",function()
+	if myHero.dead then return end
+	if _G.ExtLibEvade  and _G.ExtLibEvade.Evading then return end
+	--if myHero.attackData.state == 2 then return end
 	
 	if ZileanMenu.Key.Combo:Value() then
 		Combo()
@@ -381,18 +416,3 @@ Callback.Add("Draw", function()
 
 end)	
 
-Callback.Add("Load",function() 
-	if _G.SDK  then
-		_G.SDK.Orbwalker:OnPreMovement(function(arg) 
-			if not Move then
-				arg.Process = false
-			end
-		end)
-		_G.SDK.Orbwalker:OnPreAttack(function(arg)
-			if not Attack then
-				arg.Process = false
-			end
-		end)
-	end
-
-end)
