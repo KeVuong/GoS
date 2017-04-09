@@ -1,6 +1,6 @@
 if myHero.charName ~= "Zilean" then return end
 
-local Q = {Delay = 0.45,Radius = 180,Range = 900,Speed = 2000}
+local Q = {Delay = 0.25,Radius = 180,Range = 900,Speed = 2000}
 local W = {Delay = 0.25, Speed = math.huge}
 local E = {Delay = 0.25 ,Range = 800}
 local R = {Delay = 0.25, Range = 900,Speed = math.huge}
