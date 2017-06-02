@@ -1,13 +1,65 @@
 if myHero.charName ~= "Syndra" then return end
 
 
-
-local Q = {Range = 800,Delay = 0.25, Radius = 100, Speed = 1600,Type = "Circle",CastTime = 0}
+local Q = {Range = 800,Delay = 0.25, Radius = 90, Speed = 1600,Type = "Circle",CastTime = 0}
 local W = {Range = 950,Delay = 0.5, Radius = 160, Speed = 1500,Type = "Circle", CastTime = 0}
-local E = {Range = 700, Delay = 0.25, Speed = 2500, Radius = 100,CastTime = 0 }
+local E = {Range = 700, Delay = 0.25, Speed = 2500, Radius = 60,CastTime = 0 }
 local R = {Range = 675, CastTime = 0}
 local QE = {Range = 1250,Delay = 0.6, Radius = 100, Speed = 2000,CastTime = 0}
 local LastQ = 0
+
+local function EnableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(true)
+		_G.SDK.Orbwalker:SetMovement(true)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = false
+		_G.GOS.BlockAttack  = false
+	end
+end
+
+local function DisableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(false)
+		_G.SDK.Orbwalker:SetMovement(false)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = true
+		_G.GOS.BlockAttack  = true
+	end
+end
+
+local spellcast = {state = 1, mouse = mousePos}
+
+function CastSpell(hk,pos,delay)
+	if spellcast.state == 2 then return end
+	spellcast.state = 2
+	DisableOrb()
+	spellcast.mouse = mousePos
+	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
+	if true then
+		DelayAction(function() 
+			--print("keydown")
+			Control.KeyDown(hk)
+			Control.KeyUp(hk)
+		end, 0.012)
+		DelayAction(function()
+			Control.SetCursorPos(spellcast.mouse)
+		end,0.15)
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.1)
+	else
+		
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.01)
+	end
+end
+
 
 local UpdateSphere = false
 local Balls = {}
@@ -95,6 +147,73 @@ function CountObjectsNearPos(pos, range, radius, objects)
     return n
 end
 
+function GetDamage(spell,target)
+	local dmg = 0
+	if spell == "R" then
+		dmg = dmg + CalcMagicalDamage(myHero,target,(({90, 135 , 180})[myHero:GetSpellData(_R).level] + 0.2 * myHero.ap)*(3 + #Balls))
+	elseif dmg == "Ignite" then
+		return 50+20*myHero.levelData.lvl
+	end
+	return dmg
+end
+
+local Attack = true
+local Move = true
+local LastMove = 0
+local State = 1
+local Mouse
+local function EnableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(true)
+		_G.SDK.Orbwalker:SetMovement(true)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = false
+		_G.GOS.BlockAttack  = false
+	end
+end
+
+local function DisableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(false)
+		_G.SDK.Orbwalker:SetMovement(false)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = true
+		_G.GOS.BlockAttack  = true
+	end
+end
+
+local spellcast = {state = 1, mouse = mousePos}
+
+function CastSpell(hk,pos,delay)
+	if spellcast.state == 2 then return end
+	spellcast.state = 2
+	DisableOrb()
+	spellcast.mouse = mousePos
+	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
+	if true then
+		DelayAction(function() 
+			--print("keydown")
+			Control.KeyDown(hk)
+			Control.KeyUp(hk)
+		end, 0.012)
+		DelayAction(function()
+			Control.SetCursorPos(spellcast.mouse)
+		end,0.15)
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.1)
+	else
+		
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.01)
+	end
+end
+
 local SyndraMenu = MenuElement({type = MENU, id = "SyndraMenu", name = "Syndra", leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Syndra.png"})
 --[[Key]]
 SyndraMenu:MenuElement({type = MENU, id = "Key", name = "Key Settings"})
@@ -133,7 +252,7 @@ SyndraMenu.Drawing:MenuElement({id = "DrawBall", name = "Draw Balls", value = tr
 SyndraMenu.Drawing:MenuElement({id = "DrawDmg", name = "Draw Combo Dmg", value = false})
 
 function GetTarget(range)
-	if Ts then return Ts:GetTarget(range) end
+	
 	local result = nil
 	local N = 0
 	for i = 1,Game.HeroCount()  do
@@ -151,14 +270,14 @@ end
 
 function CastQ(target)
 	local qPos = target:GetPrediction(Q.Speed,Q.Delay)
-	Control.CastSpell(HK_Q,qPos)
+	CastSpell(HK_Q,qPos)
 end
 
 function Combo()
 	
-	if isReady(3) and SyndraMenu.Combo.UseR:Value() and #Balls == 3 then
+	if isReady(3) and SyndraMenu.Combo.UseR:Value() then
 		local target = GetTarget(R.Range)
-		if target then
+		if target and GetDamage("R",target) > target.health then
 			Control.CastSpell(HK_R,target)
 		end
 	end
@@ -179,7 +298,7 @@ function Combo()
 						local endPos = ball.pos  + (ball.pos - myHero.pos):Normalized()*1250
 						local pointSegment, pointLine, isOnSegment = VectorPointProjectionOnLineSegment(ball.pos,endPos,enemyPos)
 						if isOnSegment and GetDistanceSqr(pointSegment,enemyPos) < (E.Radius + 90)*(E.Radius + 90) then
-							Control.CastSpell(HK_E,ball.pos)
+							CastSpell(HK_E,ball.pos)
 						end
 					end
 				end
@@ -190,14 +309,16 @@ function Combo()
 		local wTarget = GetTarget(W.Range)
 		if wTarget and myHero:GetSpellData(1).toggleState == 2 then --W2
 			local wPos = wTarget:GetPrediction(W.Speed,W.Delay)
-			Control.CastSpell(HK_W,wPos)
+			CastSpell(HK_W,wPos)
 		elseif wTarget and myHero:GetSpellData(1).toggleState == 1 then --W1
 			local wPos = GrabObject()
 			if wPos then
-				Control.CastSpell(HK_W,wPos)
+				CastSpell(HK_W,wPos)
 			end
 		end
 	end
+	if spellcast.state == 2 then return end
+	
 	if isReady(0) and isReady(2) and SyndraMenu.Combo.UseQE:Value() then
 		local target = GetTarget(QE.Range)
 		if target then
@@ -205,7 +326,7 @@ function Combo()
 			pos = myHero.pos + (pos - myHero.pos):Normalized()*(Q.Range - 65)
 			Control.SetCursorPos(pos) 
 			Control.KeyDown(HK_Q)
-			DelayAction(function() Control.KeyDown(HK_E) Control.KeyUp(HK_Q) Control.KeyUp(HK_E) end, 0.65)
+			DelayAction(function() Control.KeyDown(HK_E) Control.KeyUp(HK_Q) Control.KeyUp(HK_E) end, 0.25)
 		end
 	end
 end
@@ -277,9 +398,7 @@ function Clear()
 	end
 end
 
-
 function GetMySpheres()
-	
 		for i = 0, Game.ObjectCount() do
 			local obj = Game.Object(i)
 			if obj and not obj.dead and obj.name:find("Seed") then
@@ -305,7 +424,7 @@ function UpdateTranscendent()
 end
 
 Callback.Add('Tick',function() 
-	-- @Feretorix Fix activeSpell plz
+	
 	if myHero:GetSpellData(0).currentCd == 0 then
 		UpdateSphere = false
 	elseif myHero:GetSpellData(0).currentCd >  0 and not UpdateSphere then
@@ -344,7 +463,7 @@ Callback.Add("Draw", function()
 	end
 	if SyndraMenu.Drawing.DrawW:Value() and myHero:GetSpellData(1).level > 0 then
 		local wcolor = isReady(1) and  Draw.Color(189, 183, 107, 255) or Draw.Color(240,255,0,0)
-		Draw.CircleMinimap(Vector(myHero.pos),W.Range,1,wcolor)
+		Draw.Circle(Vector(myHero.pos),W.Range,1,wcolor)
 	end
 	
 		for i, ball in pairs(Balls) do
@@ -355,9 +474,4 @@ Callback.Add("Draw", function()
 			end
 		end
 	
-end)
-
-Callback.Add("Load",function() 
-	Ts = TargetSelector
-	useExtLib = _G.SpellCast 
 end)
