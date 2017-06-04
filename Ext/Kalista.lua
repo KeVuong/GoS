@@ -5,7 +5,7 @@ require "MapPosition"
 
 require "DamageLib"
 -- Spell Data
-local Q = {Range = 1150,Delay = 0.45, Radius = 50, Speed = 2100}
+local Q = {Range = 1150,Delay = 0.35, Radius = 50, Speed = 2400}
 local W = {Range = 5000}
 local E = {Range = 1000}
 local R = {Range = 1100}
@@ -29,6 +29,70 @@ local SlotToHK = {
 	[ITEM_7] = HK_ITEM_7,
 }
 
+
+local function EnableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(true)
+		_G.SDK.Orbwalker:SetMovement(true)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = false
+		_G.GOS.BlockAttack  = false
+	end
+	if EOW then
+		EOW:SetMovements(true)
+		EOW:SetMovements(true)
+	end
+end
+
+local function DisableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(false)
+		_G.SDK.Orbwalker:SetMovement(false)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = true
+		_G.GOS.BlockAttack  = true
+	end
+	if EOW then
+		EOW:SetMovements(false)
+		EOW:SetMovements(false)
+	end
+end
+
+local spellcast = {state = 1, mouse = mousePos}
+
+function CastSpell(hk,pos,delay)
+	if spellcast.state == 2 then return end
+	if ExtLibEvade and ExtLibEvade.Evading then return end
+	
+	spellcast.state = 2
+	DisableOrb()
+	spellcast.mouse = mousePos
+	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
+	if true then
+		DelayAction(function() 
+			--print("keydown")
+			Control.KeyDown(hk)
+			Control.KeyUp(hk)
+		end, 0.012)
+		DelayAction(function()
+			Control.SetCursorPos(spellcast.mouse)
+		end,0.15)
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.1)
+	else
+		
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.01)
+	end
+end
+
+
 -- Menu
 local KalistaMenu = MenuElement({type = MENU, id = "KalistaMenu", name = "Kalista", leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Kalista.png"})
 --[[Key]]
@@ -48,6 +112,7 @@ KalistaMenu.Harass:MenuElement({id = "Mana", name = "Min Mana (%)", value = 60,m
 
 KalistaMenu:MenuElement({type = MENU, id = "Clear", name = "Clear Settings"})
 KalistaMenu.Clear:MenuElement({id = "EMob", name = "Use E On Jungle Mobs", key = string.byte("T"),toggle = true})
+KalistaMenu.Clear:MenuElement({id = "EBigMob", name = "Use E only On BigMob", value = false})
 KalistaMenu.Clear:MenuElement({id = "ESiege", name = "Use E On Siege", value = false})
 KalistaMenu.Clear:MenuElement({id = "EKillMinion", name = "Use E kills X minions", value = 5,min = 1, max = 10, step = 1})
 
@@ -86,11 +151,56 @@ end
 function HasBuff(unit, buffname)
   for i = 0, unit.buffCount do
     local buff = unit:GetBuff(i)
-    if buff.name == buffname and buff.count > 0 then 
+    if buff and buff.count > 0 and buff.name:lower() == buffname:lower()  then 
       return true
     end
   end
   return false
+end
+
+function CalcPhysicalDamage2(source, target, amount)
+	local ArmorPenPercent = source.armorPenPercent
+	local ArmorPenFlat = source.armorPen * (0.6 + (0.4 * (target.levelData.lvl / 18)))
+	local BonusArmorPen = source.bonusArmorPenPercent
+
+	local armor = target.armor
+	
+	local bonusArmor = target.bonusArmor
+	local baseArmor =  armor - bonusArmor
+	if bonusArmor < 0 then print("CalcPhysicalDamage : smth wrong with "..source.charName.." on "..target.charName) end
+	
+	local value = nil
+	if armor <= 0 then
+		value = 2 - 100 / (100 - armor)
+	else
+		baseArmor = baseArmor*ArmorPenPercent
+		bonusArmor = bonusArmor*ArmorPenPercent*BonusArmorPen
+		armor = baseArmor + bonusArmor
+		if armor > ArmorPenFlat then
+			armor = armor - ArmorPenFlat
+		end
+		value = 100 /(100 + armor)
+	end
+	if target.type ~= myHero.type then
+		return value * amount
+	end	
+	if target.charName == "Garen" and HasBuff(target,"GarenW") then
+		amount = amount*0.7
+	elseif target.charName == "MaoKai" and HasBuff(target,"MaokaiDrainDefense") then
+		amount = amount*0.7
+
+	elseif target.charName == "MasterYi" and HasBuff(target,"Meditate") then
+		amount = amount - amount * ({0.5, 0.55, 0.6, 0.65, 0.7})[target:GetSpellData(_W).level]
+	elseif target.charName == "Braum" and HasBuff(target,"BraumShieldRaise") then
+		amount = amount*(1 - ({0.3, 0.325, 0.35, 0.375, 0.4})[target:GetSpellData(_E).level])	
+	elseif target.charName == "Urgot" and HasBuff(target,"urgotswapdef") then
+		amount = amount*(1 - ({0.3, 0.4, 0.5})[target:GetSpellData(_R).level])
+	elseif target.charName == "Amumu" and HasBuff(target,"Tantrum") then
+		amount = amount - ({2, 4, 6, 8, 10})[target:GetSpellData(_E).level]
+	elseif target.charName == "Annie" and HasBuff(target,"MoltenShield") then
+		amount = amount*(1 - ({0.16,0.22,0.28,0.34,0.4})[target:GetSpellData(_E).level])		
+	end
+	return value * amount
 end
 
 function GetTarget(range)
@@ -100,7 +210,7 @@ function GetTarget(range)
 	for i = 1,Game.HeroCount()  do
 		local hero = Game.Hero(i)	
 		if isValidTarget(hero,range) and hero.team ~= myHero.team then
-			local dmgtohero = getdmg("AA",hero,myHero)
+			local dmgtohero = CalcPhysicalDamage2(myHero,hero,200)
 			local tokill = hero.health/dmgtohero
 			if tokill > N or result == nil then
 				result = hero
@@ -131,22 +241,6 @@ local function VectorPointProjectionOnLineSegment(v1, v2, v)
     return pointSegment, pointLine, isOnSegment
 end
 
-function CalcPhysicalDamage2(source, target, amount)
-	local ArmorPenPercent = source.armorPenPercent
-	local ArmorPenFlat = source.armorPen * (0.6 + (0.4 * (target.levelData.lvl / 18)))
-	local BonusArmorPen = source.bonusArmorPenPercent
-
-	local armor = target.armor
-	local bonusArmor = target.bonusArmor
-	local value = 100 / (100 + (armor * ArmorPenPercent) - (bonusArmor * (1 - BonusArmorPen)) - ArmorPenFlat)
-
-	if armor < 0 then
-		value = 2 - 100 / (100 - armor)
-	elseif (armor * ArmorPenPercent) - (bonusArmor * (1 - BonusArmorPen)) - ArmorPenFlat < 0 then
-		value = 1
-	end
-	return value * amount
-end
 
 function FindTheOath()
 	if Oathsworn then return end
@@ -204,7 +298,6 @@ function GetEStacks(unit)
 			return buff.count
 		end
 	end
-
 	return 0
 end
 
@@ -233,7 +326,7 @@ function UseItems()
 	if botrk and myHero:GetSpellData(botrk).currentCd == 0 and KalistaMenu.Key.ComboKey:Value() and KalistaMenu.Item.Botrk.Enable:Value() and myHero.health/myHero.maxHealth < KalistaMenu.Item.Botrk.BotrkHPPercent:Value()/100 and myHero.attackData.state ~= 2 then
 		local target = GetTarget(550)
 		if target then
-			Control.CastSpell(SlotToHK[botrk],target)
+			CastSpell(SlotToHK[botrk],target.pos)
 		end
 	end
 	
@@ -296,7 +389,7 @@ function CastWard(pos)
 	
 	local wardSlot = items[2055] or items[3340] or items[3363]
 	if wardSlot and myHero:GetSpellData(wardSlot).currentCd == 0 then
-		Control.CastSpell(SlotToHK[wardSlot], pos)
+		CastSpell(SlotToHK[wardSlot], pos)
 	end
 end
 
@@ -323,12 +416,8 @@ Callback.Add('Tick',function()
 						end
 					end
 				end
-				if not collision	and myHero.attackData.state ~= 2 then
-					if useExtLib then
-						useExtLib:CastSpell(HK_Q,pos)
-					else
-						Control.CastSpell(HK_Q,pos)
-					end	
+				if not collision then
+					CastSpell(HK_Q,pos)
 				end
 			end
 		end
@@ -348,8 +437,8 @@ Callback.Add('Tick',function()
 				elseif EDamages[minion.networkID] then
 					EDamages[minion.networkID] = nil
 				end
-				if stacks > 0 and eDmg > minion.health + minion.hpRegen then
-					if (minion.team == 300 and KalistaMenu.Clear.EMob:Value()) or (minion.charName:find("Siege") and KalistaMenu.Clear.ESiege:Value())then	
+				if stacks > 0 and eDmg > minion.health then
+					if (minion.team == 300 and KalistaMenu.Clear.EMob:Value() and (not KalistaMenu.Clear.EBigMob:Value() or not minion.charName:find("Mini"))) or (minion.charName:find("Siege") and KalistaMenu.Clear.ESiege:Value())then	
 						Control.CastSpell(HK_E)
 					else
 						eminions = eminions + 1	
@@ -432,5 +521,3 @@ Callback.Add("Load",function()
 	Ts = TargetSelector
 	useExtLib = _G.SpellCast 
 end)
-
-
