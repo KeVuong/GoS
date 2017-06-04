@@ -3,7 +3,7 @@ if myHero.charName ~= "Karthus" then return end
 --require "DamageLib"
 
 
-local Version = '0.22'
+local Version = '0.23'
 
 local Q = {Delay = 0.75,Radius = 135,Range = 890,Speed = math.huge}
 local W = {Delay = 0.5,Radius = 60,Range = 1000,Speed = math.huge}--20.000
@@ -22,6 +22,71 @@ local LastE =  0
 local LastR = 0
 local LastDmg = 0
 local RDamages = {}
+
+
+local function EnableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(true)
+		_G.SDK.Orbwalker:SetMovement(true)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = false
+		_G.GOS.BlockAttack  = false
+	end
+	if EOW then
+		EOW:SetMovements(true)
+		EOW:SetMovements(true)
+	end
+end
+
+local function DisableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(false)
+		_G.SDK.Orbwalker:SetMovement(false)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = true
+		_G.GOS.BlockAttack  = true
+	end
+	if EOW then
+		EOW:SetMovements(false)
+		EOW:SetMovements(false)
+	end
+end
+
+local spellcast = {state = 1, mouse = mousePos}
+
+function CastSpell(hk,pos,delay)
+	if spellcast.state == 2 then return end
+	if ExtLibEvade and ExtLibEvade.Evading then return end
+	
+	spellcast.state = 2
+	DisableOrb()
+	spellcast.mouse = mousePos
+	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
+	if true then
+		DelayAction(function() 
+			--print("keydown")
+			Control.KeyDown(hk)
+			Control.KeyUp(hk)
+		end, 0.012)
+		DelayAction(function()
+			Control.SetCursorPos(spellcast.mouse)
+		end,0.15)
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.1)
+	else
+		
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.01)
+	end
+end
+
+
 -- Menu
 local KarthusMenu = MenuElement({type = MENU, id = "KarthusMenu", name = "ExtLib: Karthus", leftIcon = "http://ddragon.leagueoflegends.com/cdn/6.1.1/img/champion/Karthus.png"})
 
@@ -270,7 +335,7 @@ function LaneClear()
 		local qPos,qHit = GetBestCircularFarmPosition(Q.Range,Q.Radius + 40,qminions)
 		if qHit >= KarthusMenu.LaneClear.MinionQ:Value() then
 			--SpellCast:CastSpell(HK_Q,qPos)
-			Control.CastSpell(HK_Q,qPos)
+			CastSpell(HK_Q,qPos)
 			return
 		end
 	end
@@ -308,19 +373,12 @@ function LastHit()
 end
 
 function CastQ(target)
-	if Pred then
-		local CastPosition,Hitchance = Pred:GetPrediction(qtarget,Q)
-		if  Hitchance == "High" then
-			LastQPos = CastPosition
-			SpellCast:CastSpell(HK_Q,CastPosition)
-		end
-		return
-	end	
 	local pos = target:GetPrediction(Q.Speed,Q.Delay)
-	Control.CastSpell(HK_Q,pos)
+	CastSpell(HK_Q,pos)
 end
 
 function CastW(target)
+--[[
 	if Pred then
 		local CastPosition,Hitchance  = Pred:GetPrediction(wtarget,W)
 		if Hitchance == "High" then	
@@ -329,8 +387,9 @@ function CastW(target)
 		end
 		return
 	end
+	]]
 	local pos = target:GetPrediction(W.Speed,W.Delay)
-	Control.CastSpell(HK_W,pos)	
+	CastSpell(HK_W,pos)	
 end
 
 
