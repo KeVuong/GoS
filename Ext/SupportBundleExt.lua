@@ -1,4 +1,4 @@
-local myHeroes = { Morgana = true, Janna = true, Nami = true, Soraka = true}
+local myHeroes = { Morgana = true, Janna = true, Nami = true, Soraka = true, Karma = true}
 
 if not myHeroes[myHero.charName] then return end
 
@@ -154,6 +154,17 @@ local MissileSpells = {
 ["Kassadin"] = {"RiftWalk"},
 }
 
+function GetDistanceSqr(p1, p2)
+    assert(p1, "GetDistance: invalid argument: cannot calculate distance to "..type(p1))
+    p2 = p2 or myHero.pos
+    return (p1.x - p2.x) ^ 2 + ((p1.z or p1.y) - (p2.z or p2.y)) ^ 2
+end
+
+function GetDistance(p1, p2)
+    return math.sqrt(GetDistanceSqr(p1, p2))
+end
+
+
 function isReady(slot)
 	return Game.CanUseSpell(slot) == READY
 end
@@ -185,7 +196,7 @@ function CountEnemies(pos,range)
 	return N	
 end
 
-function GetUglyTarget(range)
+function GetTarget(range)
 	local result = nil
 	local N = math.huge
 	for i = 1,Game.HeroCount()  do
@@ -212,6 +223,62 @@ function VectorPointProjectionOnLineSegment(v1, v2, v)
     return pointSegment, pointLine, isOnSegment
 end
 
+local function EnableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(true)
+		_G.SDK.Orbwalker:SetMovement(true)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = false
+		_G.GOS.BlockAttack  = false
+	end
+end
+
+local function DisableOrb()
+	if _G.SDK and _G.SDK.Orbwalker then
+		_G.SDK.Orbwalker:SetAttack(false)
+		_G.SDK.Orbwalker:SetMovement(false)
+	end
+	if _G.GOS then
+		_G.GOS.BlockMovement = true
+		_G.GOS.BlockAttack  = true
+	end
+end
+
+local spellcast = {state = 1, mouse = mousePos}
+
+function CastSpell(hk,pos,delay)
+	if spellcast.state == 2 then return end
+	if ExtLibEvade and ExtLibEvade.Evading then return end
+	
+	spellcast.state = 2
+	DisableOrb()
+	spellcast.mouse = mousePos
+	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
+	if true then
+		DelayAction(function() 
+			--print("keydown")
+			Control.KeyDown(hk)
+			Control.KeyUp(hk)
+		end, 0.012)
+		DelayAction(function()
+			Control.SetCursorPos(spellcast.mouse)
+		end,0.15)
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.1)
+	else
+		
+		DelayAction(function()
+			EnableOrb()
+			spellcast.state = 1
+		end,0.01)
+	end
+end
+
+local Q,W,E,R
+
 class "Morgana"
 
 function Morgana:__init()
@@ -230,7 +297,7 @@ function Morgana:__init()
 		end	
 	end	
 	self.lastTick = 0
-	self.SelectedTarget = nil
+	self.SelectedTarget = nil 
 	self:LoadData()
 	self:LoadMenu()
 	Callback.Add("Tick",function() self:Tick() end)
@@ -297,7 +364,7 @@ function Morgana:GetTarget(range)
 	if self.SelectedTarget and isValidTarget(self.SelectedTarget,range) then
 		return self.SelectedTarget
 	end	
-	return GetUglyTarget(range)
+	return GetTarget(range)
 end
 
 function Morgana:ProcessMissile()
@@ -325,14 +392,14 @@ function Morgana:ProcessMissile()
 					if isValidTarget(hero,E.range) then
 						local pointSegment,pointLine,isOnSegment = VectorPointProjectionOnLineSegment(pos,endPos,hero.pos)
 						if isOnSegment and hero.pos:DistanceTo(Vector(pointSegment.x,myHero.pos.y,pointSegment.y)) < width+ hero.boundingRadius then
-							Control.CastSpell(HK_E,hero)
+							CastSpell(HK_E,hero.pos)
 						end
 					end
 				end
 			elseif pos then
 				for k,hero in pairs(allies)	 do
 					if isValidTarget(hero,E.range) and pos:DistanceTo(hero.pos) < 80 then
-						Control.CastSpell(HK_E,hero)
+						CastSpell(HK_E,hero.pos)
 					end
 				end
 			end
@@ -365,7 +432,7 @@ function Morgana:CastQ(unit,pos)
 	if unit:GetCollision(Q.radius,Q.speed,Q.delay) == 0  then
 		pos = pos or unit:GetPrediction(Q.speed,Q.delay)
 		if pos then
-			Control.CastSpell(HK_Q,pos)
+			CastSpell(HK_Q,pos)
 		end
 	end
 end
@@ -373,7 +440,7 @@ end
 function Morgana:CastW(unit)
 	local pos = unit:GetPrediction(W.speed,W.delay)
 	if pos then
-		Control.CastSpell(HK_W,pos)
+		CastSpell(HK_W,pos)
 	end
 end
 
@@ -418,7 +485,7 @@ function Morgana:AutoCC()
 			return
 		end
 		if enemy.isEnemy and isReady(_W) and isValidTarget(enemy,W.range) and IsImmobileTarget(enemy) and self.Menu.Wset.Immobile:Value() then
-			Control.CastSpell(HK_W,enemy.pos)
+			CastSpell(HK_W,enemy.pos)
 			return
 		end
 	end
@@ -556,7 +623,7 @@ function Janna:GetTarget(range)
 	if self.SelectedTarget and isValidTarget(self.SelectedTarget,range) then
 		return self.SelectedTarget
 	end	
-	return GetUglyTarget(range)
+	return GetTarget(range)
 end
 
 function Janna:ProcessMissile()
@@ -585,7 +652,7 @@ function Janna:ProcessMissile()
 						local pointSegment,pointLine,isOnSegment = VectorPointProjectionOnLineSegment(pos,endPos,hero.pos)
 						if isOnSegment and hero.pos:DistanceTo(Vector(pointSegment.x,myHero.pos.y,pointSegment.y)) < width+ hero.boundingRadius and os.clock() - self.LastSpellT > 0.35 then
 							self.LastSpellT = os.clock()
-							Control.CastSpell(HK_E,hero)
+							CastSpell(HK_E,hero.pos)
 						end
 					end
 				end
@@ -593,7 +660,7 @@ function Janna:ProcessMissile()
 			elseif pos and endPos then
 				for k,hero in pairs(allies)	do
 					if isValidTarget(hero,E.range) and (pos:DistanceTo(hero.pos) < 80 or Vector(endPos):DistanceTo(hero.pos) < 80) and hero.health/hero.maxHealth  < self.Menu.Eset.HP:Value()/100  then
-						Control.CastSpell(HK_E,hero)--not sure 
+						CastSpell(HK_E,hero.pos)--not sure 
 					end
 				end
 			end
@@ -602,7 +669,7 @@ function Janna:ProcessMissile()
 			local target = obj.missileData.target
 			for k, hero in pairs(allies) do 
 				if isValidTarget(hero,E.range) and target == hero.handle and hero.health/hero.maxHealth  < self.Menu.Eset.HP:Value()/100  then
-					Control.CastSpell(HK_E,hero)
+					CastSpell(HK_E,hero.pos)
 				end
 			end
 		end
@@ -634,7 +701,7 @@ function Janna:CastQ(unit)
 		local pos =  unit:GetPrediction(Q.speed,Q.delay)
 		if pos and os.clock() - self.LastSpellT > 0.35 then
 			self.LastSpellT = os.clock()
-			Control.CastSpell(HK_Q,pos)
+			CastSpell(HK_Q,pos)
 		end
 	
 end
@@ -642,7 +709,7 @@ end
 function Janna:CastW(unit)
 	if os.clock() - self.LastSpellT > 0.35 then
 		self.LastSpellT = os.clock()
-		Control.CastSpell(HK_W,unit)
+		CastSpell(HK_W,unit.pos)
 	end
 end
 
@@ -660,7 +727,7 @@ function Janna:Combo()
 		for id, hero in pairs(self.Allies) do
 			if isValidTarget(hero,E.range) and  hero.attackData.state == 2 and self.Enemies[hero.attackData.target] and os.clock() - self.LastSpellT > 0.35 then  
 				self.LastSpellT = os.clock()
-				Control.CastSpell(HK_E,hero)
+				CastSpell(HK_E,hero.pos)
 			end
 		end
 	end
@@ -825,7 +892,7 @@ function Nami:GetTarget(range)
 	if self.SelectedTarget and isValidTarget(self.SelectedTarget,range) then
 		return self.SelectedTarget
 	end	
-	return GetUglyTarget(range)
+	return GetTarget(range)
 end
 
 function Nami:AutoW()
@@ -834,12 +901,12 @@ function Nami:AutoW()
 		if isValidTarget(ally,W.range) then
 			if ally.isMe then
 				if ally.health/ally.maxHealth  < self.Menu.Wset.MyHp:Value()/100 then
-					Control.CastSpell(HK_W,myHero)
+					CastSpell(HK_W,myHero.pos)
 					return
 				end	
 			else 
 				if ally.health/ally.maxHealth  < self.Menu.Wset.AllyHp:Value()/100 then
-					Control.CastSpell(HK_W,ally)
+					CastSpell(HK_W,ally.pos)
 					return
 				end	
 			end			
@@ -876,7 +943,7 @@ function Nami:CastQ(unit)
 	if not unit then return end
 	local pos = unit:GetPrediction(Q.speed,Q.delay)
 		if pos then
-			Control.CastSpell(HK_Q,pos)
+			CastSpell(HK_Q,pos)
 		end
 
 end
@@ -885,13 +952,13 @@ function Nami:CastR(unit)
 	if not unit then return end
 	local pos = unit:GetPrediction(R.speed,R.delay)
 	if pos then
-		Control.CastSpell(HK_R,pos)
+		CastSpell(HK_R,pos)
 	end
 end
 
 function Nami:CastE(unit)
 	if not unit then return end
-	Control.CastSpell(HK_E,unit)
+	CastSpell(HK_E,unit.pos)
 end
 
 function Nami:Combo()
@@ -907,7 +974,7 @@ function Nami:Combo()
 	if isReady(_E) and self.Menu.Eset.Combo:Value() then
 		for id, hero in pairs(self.Allies) do
 			if isValidTarget(hero,E.range) and  hero.attackData.state == 2 and self.Enemies[hero.attackData.target] then  
-				Control.CastSpell(HK_E,hero)
+				CastSpell(HK_E,hero.pos)
 			end
 		end
 	end
@@ -999,12 +1066,12 @@ function Soraka:__init()
 	W = {ready = false, range = 550,}
 	E = {ready = false, range = 925, radius = 310, speed = math.huge, delay = 1.75, type = "circular"}
 	R = {ready = false, range = math.huge,}
-	
+	self.SpellCast = {state = 1, mouse = mousePos}
 	self.Enemies = {}
 	self.Allies = {}
 	for i = 1,Game.HeroCount() do
 		local hero = Game.Hero(i)
-		if hero.isAlly then
+		if hero.isAlly  then
 			self.Allies[hero.handle] = hero
 		else
 			self.Enemies[hero.handle] = hero
@@ -1014,10 +1081,12 @@ function Soraka:__init()
 	self.SelectedTarget = nil
 	self:LoadData()
 	self:LoadMenu()
+	
 	Callback.Add("Tick",function() self:Tick() end)
 	Callback.Add("Draw",function() self:Draw() end)
 	Callback.Add("WndMsg",function(Msg, Key) self:WndMsg(Msg, Key) end)
 end
+
 
 function Soraka:LoadMenu()
 	self.Menu = MenuElement( {id = "SB"..myHero.charName, name = "Soraka - The Starchild", type = MENU, leftIcon = "http://ddragon.leagueoflegends.com/cdn/6.24.1/img/champion/Soraka.png"})
@@ -1094,14 +1163,14 @@ function Soraka:GetTarget(range)
 	if self.SelectedTarget and isValidTarget(self.SelectedTarget,range) then
 		return self.SelectedTarget
 	end	
-	return GetUglyTarget(range)
+	return GetTarget(range)
 end
 
 function Soraka:CastQ(unit)
 	if not unit then return end
 	local pos = unit:GetPrediction(Q.speed,Q.delay)
 		if pos then
-			Control.CastSpell(HK_Q,pos)
+			CastSpell(HK_Q,pos)
 		end
 end
 
@@ -1109,7 +1178,7 @@ function Soraka:CastE(unit)
 	if not unit then return end
 	local pos = unit:GetPrediction(E.speed,E.delay)
 		if pos then
-			Control.CastSpell(HK_E,pos)
+			CastSpell(HK_E,pos)
 		end
 end
 
@@ -1143,7 +1212,7 @@ function Soraka:AutoW()
 		if isValidTarget(ally,W.range) then
 			if not ally.isMe then
 				if (ally.health/ally.maxHealth  < self.Menu.Wset.AllyHp:Value()/100) and (myHero.health/myHero.maxHealth  >= self.Menu.Wset.MyHp:Value()/100) then
-					Control.CastSpell(HK_W,ally)
+					CastSpell(HK_W,ally.pos)
 					return
 				end	
 			end			
@@ -1154,7 +1223,7 @@ end
 function Soraka:AutoR()
 	if (not isReady(_R) or not self.Menu.Rset.AutoR:Value())then return end
 	for i, ally in pairs(self.Allies) do
-		if (ally.health/ally.maxHealth  < self.Menu.Rset.AllyHp:Value()/100) and (CountEnemies(ally.pos,400) > 0) then
+		if (ally.health/ally.maxHealth  < self.Menu.Rset.AllyHp:Value()/100) and (CountEnemies(ally.pos,300) > 0) then
 			Control.CastSpell(HK_R)
 			return
 		end	
@@ -1213,5 +1282,505 @@ function Soraka:WndMsg(msg,key)
 	end	
 end
 
+--[[Sona]]
+
+
+class "Sona"
+
+function Sona:__init()
+	Q = {ready = false, range = 810, radius = 235, speed = math.huge, delay = 0.250, type = "circular"}
+	W = {ready = false, range = 550,}
+	E = {ready = false, range = 925, radius = 310, speed = math.huge, delay = 1.75, type = "circular"}
+	R = {ready = false, range = math.huge,}
+	self.SpellCast = {state = 1, mouse = mousePos}
+	self.Enemies = {}
+	self.Allies = {}
+	for i = 1,Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly  then
+			self.Allies[hero.handle] = hero
+		else
+			self.Enemies[hero.handle] = hero
+		end	
+	end	
+	self.lastTick = 0
+	self.SelectedTarget = nil
+	self:LoadData()
+	self:LoadMenu()
+	
+	Callback.Add("Tick",function() self:Tick() end)
+	Callback.Add("Draw",function() self:Draw() end)
+	Callback.Add("WndMsg",function(Msg, Key) self:WndMsg(Msg, Key) end)
+end
+
+
+function Sona:LoadMenu()
+	self.Menu = MenuElement( {id = "SB"..myHero.charName, name = "Sona - The Starchild", type = MENU, leftIcon = "http://ddragon.leagueoflegends.com/cdn/6.24.1/img/champion/Sona.png"})
+	self.Menu:MenuElement({id = "Key", name = "> Key Settings", type = MENU})
+	self.Menu.Key:MenuElement({id = "Combo",name = "Combo", key = 32})
+	self.Menu.Key:MenuElement({id = "Harass",name = "Harass", key = string.byte("C")})
+
+	self.Menu:MenuElement({type = MENU, id = "Qset", name = "> Q Settings"})
+	self.Menu.Qset:MenuElement({id = "Combo",name = "Use in Combo", value = true })
+	self.Menu.Qset:MenuElement({id = "Harass", name = "Use in Harass", value = true})
+
+	self.Menu:MenuElement({type = MENU, id = "Eset", name = "> E Settings"})
+	self.Menu.Eset:MenuElement({id = "Combo", name = "Use in Combo",value = true})
+	self.Menu.Eset:MenuElement({id = "Harass", name = "Use in Harass",value = true})
+	self.Menu.Eset:MenuElement({id = "Immobile",name = "Auto on Immobile",value = true})
+	self.Menu.Eset:MenuElement({id = "Interrupt",name = "Auto Interrupt Spells",value = true})
+	
+	self.Menu:MenuElement({id = "Wset", name = "> W Settings", type = MENU})
+	self.Menu.Wset:MenuElement({id = "AutoW", name = "Enable Auto Health",value = true})
+	self.Menu.Wset:MenuElement({id = "MyHp", name = "Heal Allies if my HP Percent above ",value = 8, min = 1, max = 100,step = 1})
+	self.Menu.Wset:MenuElement({id = "AllyHp", name = "Heal Allies if HP Percent below ",value = 80, min = 1, max = 100,step = 1})
+	
+	self.Menu:MenuElement({id = "Rset", name = "> R Settings",type = MENU})
+	self.Menu.Rset:MenuElement({id = "AutoR", name = "Enable Auto R",value = true})
+	self.Menu.Rset:MenuElement({id = "RHit", name = "Min enemies hit",value = 3, min = 1, max = 5,step = 1})
+	
+	self.Menu:MenuElement({type = MENU, id = "Draw",name = "> Draw Settings"})
+	self.Menu.Draw:MenuElement({id = "Q", name = "Draw Q Range", value = true})
+	self.Menu.Draw:MenuElement({id = "W", name = "Draw W Range", value = true})
+	self.Menu.Draw:MenuElement({id = "E", name = "Draw E Range", value = true})
+	PrintChat("SupportBundle: "..myHero.charName.." Loaded")
+end
+
+function Sona:LoadData()
+	self.MissileSpells = {}
+	for i = 1,Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			if MissileSpells[hero.charName] then
+				for k,v in pairs(MissileSpells[hero.charName]) do
+					if #v > 1 then
+						self.MissileSpells[v] = true
+					end	
+				end
+			end
+		end
+	end
+end
+
+function Sona:Tick()
+	if myHero.dead then return end
+	if self.SelectedTarget and self.SelectedTarget.dead then 
+		self.SelectedTarget = nil
+	end
+	--self:
+	if isReady(_E) then
+		self:AutoE()
+	end	
+	if isReady(_R) then
+		self:AutoR()
+	end
+	if isReady(_W) then
+		self:AutoW()
+	end
+	if self.Menu.Key.Combo:Value() then
+		self:Combo()
+	end
+	if self.Menu.Key.Harass:Value() then
+		self:Harass()
+	end
+end
+
+function Sona:GetTarget(range)
+	if self.SelectedTarget and isValidTarget(self.SelectedTarget,range) then
+		return self.SelectedTarget
+	end	
+	return GetTarget(range)
+end
+
+function Sona:CastQ(unit)
+	if not unit then return end
+	local pos = unit:GetPrediction(Q.speed,Q.delay)
+		if pos then
+			CastSpell(HK_Q,pos)
+		end
+end
+
+function Sona:CastE(unit)
+	if not unit then return end
+	local pos = unit:GetPrediction(E.speed,E.delay)
+		if pos then
+			CastSpell(HK_E,pos)
+		end
+end
+
+function Sona:Combo()
+	local qtarget = self:GetTarget(Q.range)
+	local etarget = self:GetTarget(E.range)
+	
+	if etarget and isReady(_E) and self.Menu.Eset.Combo:Value()  then
+		self:CastE(etarget)
+	end
+	if qtarget and isReady(_Q) and self.Menu.Qset.Combo:Value() then
+		self:CastQ(qtarget)
+	end
+end
+
+function Sona:Harass()
+	local qtarget = self:GetTarget(Q.range)
+	local etarget = self:GetTarget(E.range)
+	
+	if etarget and isReady(_E) and self.Menu.Eset.Harass:Value() and (myHero.mana > myHero:GetSpellData(_R).mana) then
+		self:CastE(etarget)
+	end
+	if qtarget and isReady(_Q) and self.Menu.Qset.Harass:Value() and (myHero.mana > myHero:GetSpellData(_R).mana) then
+		self:CastQ(qtarget)
+	end
+end
+
+function Sona:AutoW()
+	if (not isReady(_W) or not self.Menu.Wset.AutoW:Value())then return end
+	for i, ally in pairs(self.Allies) do
+		if isValidTarget(ally,W.range) then
+			if not ally.isMe then
+				if (ally.health/ally.maxHealth  < self.Menu.Wset.AllyHp:Value()/100) and (myHero.health/myHero.maxHealth  >= self.Menu.Wset.MyHp:Value()/100) then
+					CastSpell(HK_W,ally.pos)
+					return
+				end	
+			end			
+		end
+	end
+end
+
+function Sona:AutoR()
+	if (not isReady(_R) or not self.Menu.Rset.AutoR:Value())then return end
+	for i, ally in pairs(self.Allies) do
+		if (ally.health/ally.maxHealth  < self.Menu.Rset.AllyHp:Value()/100) and (CountEnemies(ally.pos,300) > 0) then
+			Control.CastSpell(HK_R)
+			return
+		end	
+	end
+end
+
+function Sona:AutoE()
+	for i = 1, Game.HeroCount() do
+		local enemy  = Game.Hero(i)
+ 
+		if enemy.isEnemy and isReady(_E) and isValidTarget(enemy,E.range) and IsImmobileTarget(enemy) and self.Menu.Eset.Immobile:Value() then
+			self:CastE(enemy,enemy.pos)
+			return
+		end
+		if enemy.isEnemy and isReady(_E) and isValidTarget(enemy,E.range) and AutoInterrupter:IsChannelling(enemy) and self.Menu.Eset.Interrupt:Value() then
+			self:CastQ(enemy,enemy.pos)
+			return
+		end
+	end
+end
+
+function Sona:Draw()
+	if myHero.dead then return end
+
+	if self.Menu.Draw.Q:Value() then
+		local qcolor = isReady(_Q) and  Draw.Color(189, 183, 107, 255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),Q.range,1,qcolor)
+	end
+	if self.Menu.Draw.W:Value() then
+		local wcolor = isReady(_W) and  Draw.Color(240,30,144,255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),W.range,1,wcolor)
+	end
+	if self.Menu.Draw.E:Value() then
+		local ecolor = isReady(_E) and  Draw.Color(233, 150, 122, 255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),E.range,1,ecolor)
+	end
+	--R
+end
+
+function Sona:WndMsg(msg,key)
+	if msg == 513 then
+		local starget = nil
+		for i  = 1,Game.HeroCount(i) do
+			local enemy = Game.Hero(i)
+			if isValidTarget(enemy) and enemy.isEnemy and enemy.pos:DistanceTo(mousePos) < 200 then
+				starget = enemy
+				break
+			end
+		end
+		if starget then
+			self.SelectedTarget = starget
+			print("New target selected: "..starget.charName)
+		else
+			self.SelectedTarget = nil
+		end
+	end	
+end
+
+--[[Karma]]
+
+
+class "Karma"
+
+function Karma:__init()
+	Q = {ready = false, range = 950, radius = 70, speed = 1700, delay = 0.250, type = "line"}
+	W = {ready = false, range = 700,}
+	E = {ready = false, range = 800}
+	R = {ready = false, range = math.huge,}
+	self.SpellCast = {state = 1, mouse = mousePos}
+	self.Enemies = {}
+	self.Allies = {}
+	for i = 1,Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isAlly  then
+			self.Allies[hero.handle] = hero
+		else
+			self.Enemies[hero.handle] = hero
+		end	
+	end	
+	self.lastTick = 0
+	self.SelectedTarget = nil
+	self:LoadData()
+	self:LoadMenu()
+	
+	Callback.Add("Tick",function() self:Tick() end)
+	Callback.Add("Draw",function() self:Draw() end)
+	Callback.Add("WndMsg",function(Msg, Key) self:WndMsg(Msg, Key) end)
+end
+
+
+function Karma:LoadMenu()
+	self.Menu = MenuElement( {id = "SB"..myHero.charName, name = "Karma - Trust Your Spirit", type = MENU, leftIcon = "http://ddragon.leagueoflegends.com/cdn/6.24.1/img/champion/Karma.png"})
+	self.Menu:MenuElement({id = "Key", name = "> Key Settings", type = MENU})
+	self.Menu.Key:MenuElement({id = "Combo",name = "Combo", key = 32})
+	self.Menu.Key:MenuElement({id = "Harass",name = "Harass", key = string.byte("C")})
+
+	self.Menu:MenuElement({type = MENU, id = "Qset", name = "> Q Settings"})
+	self.Menu.Qset:MenuElement({id = "Combo",name = "Use in Combo", value = true })
+	self.Menu.Qset:MenuElement({id = "Harass", name = "Use in Harass", value = true})
+
+	self.Menu:MenuElement({type = MENU, id = "Eset", name = "> E Settings"})
+	self.Menu.Eset:MenuElement({id = "Combo", name = "Use in Combo",value = true})
+	self.Menu.Eset:MenuElement({id = "HPShield",name = "Use if my HP is lower than",value = 30, min = 1, max = 100,step = 1})
+	
+	self.Menu.Eset:MenuElement({id = "AutoShield",name = "Auto Shield x Allies",value = 3, min = 1, max = 5,step = 1})
+	
+	
+	self.Menu:MenuElement({id = "Wset", name = "> W Settings", type = MENU})
+	self.Menu.Wset:MenuElement({id = "Combo", name = "Use in Combo",value = true})
+	self.Menu.Wset:MenuElement({id = "PreferW",name = "Combo R -> W if my HP is lower than",value = 30, min = 1, max = 100,step = 1})
+	
+	self.Menu:MenuElement({id = "Rset", name = "> R Settings",type = MENU})
+	self.Menu.Rset:MenuElement({id = "Combo", name = "Use in Combo",value = true})
+	
+	
+	self.Menu:MenuElement({type = MENU, id = "Draw",name = "> Draw Settings"})
+	self.Menu.Draw:MenuElement({id = "Q", name = "Draw Q Range", value = true})
+	self.Menu.Draw:MenuElement({id = "W", name = "Draw W Range", value = true})
+	self.Menu.Draw:MenuElement({id = "E", name = "Draw E Range", value = true})
+	PrintChat("SupportBundle: "..myHero.charName.." Loaded")
+end
+
+function Karma:LoadData()
+	self.MissileSpells = {}
+	for i = 1,Game.HeroCount() do
+		local hero = Game.Hero(i)
+		if hero.isEnemy then
+			if MissileSpells[hero.charName] then
+				for k,v in pairs(MissileSpells[hero.charName]) do
+					if #v > 1 then
+						self.MissileSpells[v] = true
+					end	
+				end
+			end
+		end
+	end
+end
+
+function Karma:HasMantra()
+	for i = 0, myHero.buffCount do
+		local buff = myHero:GetBuff(i)
+		if buff.name and buff.name:lower() == "karmamantra" and buff.count > 0 and Game.Timer() < buff.expireTime then 
+			return true
+		end
+	end
+	return false
+end
+
+function Karma:Tick()
+	if myHero.dead then return end
+	if self.SelectedTarget and self.SelectedTarget.dead then 
+		self.SelectedTarget = nil
+	end
+	if self:HasMantra() then
+		Q.range = 1150
+	else
+		Q.range = 950
+	end
+
+	if self.Menu.Key.Combo:Value() then
+		self:Combo()
+	end
+	if self.Menu.Key.Harass:Value() then
+		self:Harass()
+	end
+end
+
+function Karma:GetTarget(range)
+	if self.SelectedTarget and isValidTarget(self.SelectedTarget,range) then
+		return self.SelectedTarget
+	end	
+	return GetTarget(range)
+end
+
+function Karma:CastQ(unit)
+	if not unit then return end
+	local pos = unit:GetPrediction(Q.speed,Q.delay)
+		if pos then
+			CastSpell(HK_Q,pos)
+		end
+end
+
+function Karma:CastE(unit)
+	if not unit then return end
+	local pos = unit:GetPrediction(E.speed,E.delay)
+		if pos then
+			CastSpell(HK_E,pos)
+		end
+end
+
+function Karma:Combo()
+	local qtarget = self:GetTarget(Q.range)
+	local wtarget = self:GetTarget(W.range)
+	if wtarget then
+		qtarget = wtarget
+	end
+	if isReady(_W) and wtarget then
+		if isReady(_R) and myHero.health/myHero.maxHealth < self.Menu.Wset.PreferW:Value()/100 then
+			Control.CastSpell(_R)
+		end
+		CastSpell(HK_W,wtarget.pos)
+		return
+	end
+	if isReady(_Q) and qtarget then
+		if isReady(_R) and self.Menu.Rset.Combo:Value() then
+			Control.CastSpell(HK_R)
+		end
+		if isReady(_Q) then
+			local pos = qtarget:GetPrediction(Q.speed,Q.delay)
+			if qtarget:GetCollision(Q.radius,Q.speed,Q.delay) == 0 then
+				CastSpell(HK_Q,pos)
+			elseif self:HasMantra() then
+				
+				local object = self:GetCollisionObject(pos)
+				if not object or (object and object.pos:DistanceTo(pos) < 150) then
+					CastSpell(HK_Q,pos)
+				end
+			end
+		end
+	end
+	if isReady(_E) and self.Menu.Eset.Combo:Value() and myHero.health/myHero.maxHealth < self.Menu.Eset.HPShield:Value()/100  then
+		CastSpell(HK_E,myHero.pos)
+		return
+	end
+	if isReady(_E) and self.Menu.Eset.Combo:Value() then
+		local ally = self:GetShieldTarget()
+		if ally and isReady(_R) then
+			Control.CastSpell(HK_R)
+		end
+		if ally and self:HasMantra() then	
+			CastSpell(HK_E,ally.pos)
+		end
+	end
+end
+
+function Karma:GetCollisionObject(pos)
+	local objects = {}
+	for i = 1, Game.MinionCount() do
+		local minion = Game.Minion(i)
+		if isValidTarget(minion,Q.range + 150) then
+			local pointSegment,pointLine,isOnSegment = VectorPointProjectionOnLineSegment(myHero.pos,pos,minion.pos)
+			if isOnSegment and GetDistance(minion.pos,myHero.pos) < Q.radius + minion.boundingRadius then
+				table.insert(objects,minion)
+			end
+		end
+	end
+	table.sort(objects,function(a,b) return GetDistance(a.pos,myHero.pos)	< GetDistance(b.pos,myHero.pos)  end)
+	return objects[1]
+end
+
+function Karma:Harass()
+	local qtarget = self:GetTarget(Q.range)
+	if qtarget and isReady(_Q) and self.Menu.Qset.Harass:Value() and (myHero.mana > myHero:GetSpellData(_R).mana) then
+		local pos = qtarget:GetPrediction(Q.speed,Q.delay)
+		if qtarget:GetCollision(Q.radius,Q.speed,Q.delay) == 0 then
+			CastSpell(HK_Q,pos)
+		end	
+	end
+end
+
+
+function Karma:CountAllyNearPos(pos,range)
+	local count = 0
+	for i = 1, Game.HeroCount() do
+		local ally = Game.Hero(i)
+		if ally and not ally.isEnemy and not ally.dead and ally.pos:DistanceTo(pos) < range then
+			count=count + 1
+		end
+	end
+	return count	
+end
+
+function Karma:GetShieldTarget()
+	local result = myHero
+	local total = self:CountAllyNearPos(myHero.pos,660)
+	for i = 1, Game.HeroCount() do
+		local ally = Game.Hero(i)
+		if ally and not ally.isEnemy and not ally.dead and ally.charName ~= myHero.charName and ally.distance < E.range then
+			local count = self:CountAllyNearPos(ally.pos,660)
+			if count > total then
+				total = count
+				result = ally
+			end
+		end
+	end
+	if total >= self.Menu.Eset.AutoShield:Value() then
+		return result
+	else
+		return nil
+	end	
+end
+
+function Karma:Clear()
+
+end
+
+function Karma:Draw()
+	if myHero.dead then return end
+
+	if self.Menu.Draw.Q:Value() then
+		local qcolor = isReady(_Q) and  Draw.Color(189, 183, 107, 255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),Q.range,1,qcolor)
+	end
+	if self.Menu.Draw.W:Value() then
+		local wcolor = isReady(_W) and  Draw.Color(240,30,144,255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),W.range,1,wcolor)
+	end
+	if self.Menu.Draw.E:Value() then
+		local ecolor = isReady(_E) and  Draw.Color(233, 150, 122, 255) or Draw.Color(240,255,0,0)
+		Draw.Circle(Vector(myHero.pos),E.range,1,ecolor)
+	end
+	--R
+end
+
+function Karma:WndMsg(msg,key)
+	if msg == 513 then
+		local starget = nil
+		for i  = 1,Game.HeroCount(i) do
+			local enemy = Game.Hero(i)
+			if isValidTarget(enemy) and enemy.isEnemy and enemy.pos:DistanceTo(mousePos) < 200 then
+				starget = enemy
+				break
+			end
+		end
+		if starget then
+			self.SelectedTarget = starget
+			print("New target selected: "..starget.charName)
+		else
+			self.SelectedTarget = nil
+		end
+	end	
+end
 
 Callback.Add("Load",function() _G[myHero.charName]() end)
