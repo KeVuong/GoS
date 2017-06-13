@@ -8,6 +8,7 @@ local R = {Range = 675, CastTime = 0}
 local QE = {Range = 1250,Delay = 0.6, Radius = 100, Speed = 2000,CastTime = 0}
 local LastQ = 0
 
+
 local function EnableOrb()
 	if _G.SDK and _G.SDK.Orbwalker then
 		_G.SDK.Orbwalker:SetAttack(true)
@@ -16,6 +17,10 @@ local function EnableOrb()
 	if _G.GOS then
 		_G.GOS.BlockMovement = false
 		_G.GOS.BlockAttack  = false
+	end
+	if EOW then
+		EOW:SetMovements(true)
+		EOW:SetMovements(true)
 	end
 end
 
@@ -28,21 +33,24 @@ local function DisableOrb()
 		_G.GOS.BlockMovement = true
 		_G.GOS.BlockAttack  = true
 	end
+	if EOW then
+		EOW:SetMovements(false)
+		EOW:SetMovements(false)
+	end
 end
 
 local spellcast = {state = 1, mouse = mousePos}
 
 function CastSpell(hk,pos,delay)
+	if spellcast.state == 2 then return end
 	if ExtLibEvade and ExtLibEvade.Evading then return end
 	
-	if spellcast.state == 2 then return end
 	spellcast.state = 2
 	DisableOrb()
 	spellcast.mouse = mousePos
 	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
 	if true then
 		DelayAction(function() 
-			--print("keydown")
 			Control.KeyDown(hk)
 			Control.KeyUp(hk)
 		end, 0.012)
