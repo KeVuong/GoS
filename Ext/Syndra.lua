@@ -33,6 +33,8 @@ end
 local spellcast = {state = 1, mouse = mousePos}
 
 function CastSpell(hk,pos,delay)
+	if ExtLibEvade and ExtLibEvade.Evading then return end
+	
 	if spellcast.state == 2 then return end
 	spellcast.state = 2
 	DisableOrb()
