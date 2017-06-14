@@ -65,14 +65,12 @@ local spellcast = {state = 1, mouse = mousePos}
 function CastSpell(hk,pos,delay)
 	if spellcast.state == 2 then return end
 	if ExtLibEvade and ExtLibEvade.Evading then return end
-	
 	spellcast.state = 2
 	DisableOrb()
 	spellcast.mouse = mousePos
 	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
 	if true then
 		DelayAction(function() 
-			--print("keydown")
 			Control.KeyDown(hk)
 			Control.KeyUp(hk)
 		end, 0.012)
