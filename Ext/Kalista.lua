@@ -181,7 +181,10 @@ function CalcPhysicalDamage2(source, target, amount)
 	end
 	if target.type ~= myHero.type then
 		return value * amount
-	end	
+	end
+	if HasBuff(source,"Exhaust") then
+		amount = amount*0.6
+	end
 	if target.charName == "Garen" and HasBuff(target,"GarenW") then
 		amount = amount*0.7
 	elseif target.charName == "MaoKai" and HasBuff(target,"MaokaiDrainDefense") then
