@@ -1,6 +1,6 @@
 if myHero.charName ~= "Zilean" then return end
 
-local Q = {Delay = 0.25,Radius = 180,Range = 900,Speed = 2000}
+local Q = {Delay = 0.45,Radius = 180,Range = 900,Speed = 2000}
 local W = {Delay = 0.25, Speed = math.huge}
 local E = {Delay = 0.25 ,Range = 800}
 local R = {Delay = 0.25, Range = 900,Speed = math.huge}
@@ -32,6 +32,7 @@ local Move = true
 local LastMove = 0
 local State = 1
 local Mouse
+
 local function EnableOrb()
 	if _G.SDK and _G.SDK.Orbwalker then
 		_G.SDK.Orbwalker:SetAttack(true)
@@ -40,6 +41,10 @@ local function EnableOrb()
 	if _G.GOS then
 		_G.GOS.BlockMovement = false
 		_G.GOS.BlockAttack  = false
+	end
+	if EOW then
+		EOW:SetMovements(true)
+		EOW:SetMovements(true)
 	end
 end
 
@@ -52,19 +57,24 @@ local function DisableOrb()
 		_G.GOS.BlockMovement = true
 		_G.GOS.BlockAttack  = true
 	end
+	if EOW then
+		EOW:SetMovements(false)
+		EOW:SetMovements(false)
+	end
 end
 
 local spellcast = {state = 1, mouse = mousePos}
 
 function CastSpell(hk,pos,delay)
 	if spellcast.state == 2 then return end
+	if ExtLibEvade and ExtLibEvade.Evading then return end
+	
 	spellcast.state = 2
 	DisableOrb()
 	spellcast.mouse = mousePos
 	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
 	if true then
 		DelayAction(function() 
-			--print("keydown")
 			Control.KeyDown(hk)
 			Control.KeyUp(hk)
 		end, 0.012)
@@ -84,6 +94,7 @@ function CastSpell(hk,pos,delay)
 	end
 end
 
+
 local ZileanMenu = MenuElement({ id = "ZileanMenu", name = "Zilean - The Master of Time",type = MENU, leftIcon = "http://ddragon.leagueoflegends.com/cdn/7.1.1/img/champion/Zilean.png"})
 function LoadMenu()
 	ZileanMenu:MenuElement({id = "Key", name = "> Key Settings",type = MENU})
@@ -100,12 +111,10 @@ function LoadMenu()
 	ZileanMenu.Qset:MenuElement({id = "Interrupt", name = "Interrupt Enemy Spells", value = true})
 	ZileanMenu.Qset:MenuElement({id = "JungleClear", name = "Use in JungleClear", value = true})
 	
-
 	ZileanMenu:MenuElement({id = "Wset", name = "> W Settings", type = MENU})
 	ZileanMenu.Wset:MenuElement({id = "Combo", name = "Use in Combo", value = true})
 	ZileanMenu.Wset:MenuElement({id = "Harass",name = "Use in Harass", value = true})
-	
-	
+
 	ZileanMenu:MenuElement({id = "Eset", name = "> E Settings", type = MENU})
 	ZileanMenu.Eset:MenuElement({ id = "Combo", name = "Use in Combo",value= true})
 	ZileanMenu.Eset:MenuElement({id = "Speed", name = "Use on Ally", value =true})
@@ -113,7 +122,6 @@ function LoadMenu()
 
 	
 	ZileanMenu:MenuElement({ id = "Rset", name = "> R Settings", type = MENU})
-	
 	ZileanMenu.Rset:MenuElement( {id = "AutoR", name ="Auto R to Save Life", value = true})
 	ZileanMenu.Rset:MenuElement({id="Me",name = "Save Me",value = true})
 	ZileanMenu.Rset:MenuElement({id = "MyHp", name = "My %hp < ", value = 30, min = 1,max = 100, step = 1})
@@ -123,11 +131,11 @@ function LoadMenu()
 	
 	ZileanMenu:MenuElement({id = "Mana", name = "> Mana Settings", type = MENU})
 	ZileanMenu.Mana:MenuElement({id = "Harass", name = "Dont Harass if Mana is lower than ", value= 50, min = 1, max = 100})
-	
+
 	ZileanMenu:MenuElement({id = "KS", name = "> KillSteal Settings", type = MENU})
+
 	ZileanMenu.KS:MenuElement({id = "Q", name = "Use Q",value = true})
 	ZileanMenu.KS:MenuElement({id = "Ignite", name = "Use Ignite",value = true})
-	
 	ZileanMenu:MenuElement({id = "Draw", name = "> Draw Settings", type = MENU})
 	ZileanMenu.Draw:MenuElement({id = "Q", name = "Draw Q Range", value = true})
 	
