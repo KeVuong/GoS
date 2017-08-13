@@ -1,6 +1,6 @@
 if myHero.charName ~= "Syndra" then return end
 
-
+local version = 0.21
 local Q = {Range = 800,Delay = 0.25, Radius = 90, Speed = 1600,Type = "Circle",CastTime = 0}
 local W = {Range = 950,Delay = 0.5, Radius = 160, Speed = 1500,Type = "Circle", CastTime = 0}
 local E = {Range = 700, Delay = 0.25, Speed = 2500, Radius = 60,CastTime = 0 }
@@ -53,14 +53,14 @@ function CastSpell(hk,pos,delay)
 		DelayAction(function() 
 			Control.KeyDown(hk)
 			Control.KeyUp(hk)
-		end, 0.012)
+		end, 0.015)
 		DelayAction(function()
 			Control.SetCursorPos(spellcast.mouse)
-		end,0.15)
+		end,0.2)
 		DelayAction(function()
 			EnableOrb()
 			spellcast.state = 1
-		end,0.1)
+		end,0.3)
 	else
 		
 		DelayAction(function()
