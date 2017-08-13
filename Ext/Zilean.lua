@@ -1,4 +1,6 @@
 if myHero.charName ~= "Zilean" then return end
+local version = 1.3
+
 
 local Q = {Delay = 0.45,Radius = 180,Range = 900,Speed = 2000}
 local W = {Delay = 0.25, Speed = math.huge}
@@ -77,14 +79,14 @@ function CastSpell(hk,pos,delay)
 		DelayAction(function() 
 			Control.KeyDown(hk)
 			Control.KeyUp(hk)
-		end, 0.012)
+		end, 0.015)
 		DelayAction(function()
 			Control.SetCursorPos(spellcast.mouse)
-		end,0.15)
+		end,0.2)
 		DelayAction(function()
 			EnableOrb()
 			spellcast.state = 1
-		end,0.1)
+		end,0.3)
 	else
 		
 		DelayAction(function()
