@@ -1,6 +1,8 @@
 
 if myHero.charName ~= "Kalista" then return end
 
+local Version = '2.5'
+
 require "MapPosition"
 
 require "DamageLib"
@@ -65,6 +67,7 @@ local spellcast = {state = 1, mouse = mousePos}
 function CastSpell(hk,pos,delay)
 	if spellcast.state == 2 then return end
 	if ExtLibEvade and ExtLibEvade.Evading then return end
+	
 	spellcast.state = 2
 	DisableOrb()
 	spellcast.mouse = mousePos
@@ -73,14 +76,14 @@ function CastSpell(hk,pos,delay)
 		DelayAction(function() 
 			Control.KeyDown(hk)
 			Control.KeyUp(hk)
-		end, 0.012)
+		end, 0.015)
 		DelayAction(function()
 			Control.SetCursorPos(spellcast.mouse)
-		end,0.15)
+		end,0.2)
 		DelayAction(function()
 			EnableOrb()
 			spellcast.state = 1
-		end,0.1)
+		end,0.3)
 	else
 		
 		DelayAction(function()
@@ -149,7 +152,7 @@ end
 function HasBuff(unit, buffname)
   for i = 0, unit.buffCount do
     local buff = unit:GetBuff(i)
-    if buff and buff.count > 0 and buff.name:lower() == buffname:lower()  then 
+    if buff and buff.count > 0 and buff.name:lower() == buffname:lower() and buff.expireTime >= Game.Timer() then 
       return true
     end
   end
@@ -181,7 +184,7 @@ function CalcPhysicalDamage2(source, target, amount)
 	end
 	if target.type ~= myHero.type then
 		return value * amount
-	end
+	end	
 	if HasBuff(source,"Exhaust") then
 		amount = amount*0.6
 	end
@@ -295,7 +298,7 @@ function GetEStacks(unit)
 	if not unit then return 0 end
 	for i = 0, unit.buffCount do
 		local buff = unit:GetBuff(i)
-		if buff.name and buff.name:lower() == "kalistaexpungemarker"and  buff.count > 0 then
+		if buff.name and buff.name:lower() == "kalistaexpungemarker"and  buff.count > 0 and buff.expireTime >= Game.Timer() then
 			return buff.count
 		end
 	end
