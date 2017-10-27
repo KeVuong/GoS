@@ -1,7 +1,7 @@
 
 if myHero.charName ~= "Kalista" then return end
 
-local Version = '2.5'
+local Version = '2.51'
 
 require "MapPosition"
 
@@ -71,26 +71,21 @@ function CastSpell(hk,pos,delay)
 	spellcast.state = 2
 	DisableOrb()
 	spellcast.mouse = mousePos
-	DelayAction(function() Control.SetCursorPos(pos) end, 0.01) 
-	if true then
-		DelayAction(function() 
-			Control.KeyDown(hk)
-			Control.KeyUp(hk)
-		end, 0.015)
+	DelayAction(function() 
+		Control.SetCursorPos(pos) 
+		Control.KeyDown(hk)
+		Control.KeyUp(hk)
+	end, 0.05) 
+	
 		DelayAction(function()
 			Control.SetCursorPos(spellcast.mouse)
-		end,0.2)
-		DelayAction(function()
-			EnableOrb()
-			spellcast.state = 1
-		end,0.3)
-	else
+		end,0.25)
 		
 		DelayAction(function()
 			EnableOrb()
 			spellcast.state = 1
-		end,0.01)
-	end
+		end,0.35)
+	
 end
 
 
@@ -525,3 +520,4 @@ Callback.Add("Load",function()
 	Ts = TargetSelector
 	useExtLib = _G.SpellCast 
 end)
+
